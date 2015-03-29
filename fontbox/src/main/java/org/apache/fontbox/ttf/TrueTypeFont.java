@@ -276,6 +276,21 @@ public class TrueTypeFont implements Type1Equivalent
     }
     
     /**
+     * Get the "kern" table for this TTF.
+     * 
+     * @return The "kern" table.
+     */
+    public synchronized KerningTable getKerning() throws IOException
+    {
+        KerningTable kerning = (KerningTable)tables.get( KerningTable.TAG );
+        if (kerning != null && !kerning.getInitialized())
+        {
+            readTable(kerning);
+        }
+        return kerning;
+    }
+    
+    /**
      * This permit to get the data of the True Type Font
      * program representing the stream used to build this 
      * object (normally from the TTFParser object).
