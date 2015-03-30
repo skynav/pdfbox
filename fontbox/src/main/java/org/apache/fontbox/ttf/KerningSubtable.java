@@ -83,7 +83,14 @@ public class KerningSubtable extends TTFTable
         int[] kerning = new int[ng];
         for (int i = 0; i < ng; ++i) {
             int l = glyphs[i];
-            int r = ((i + 1) < ng) ? glyphs[i + 1] : -1;
+            int r = -1;
+            for (int k = i + 1; k < ng; ++k) {
+                int g = glyphs[k];
+                if (g >= 0) {
+                    r = g;
+                    break;
+                }
+            }
             kerning[i] = getKerning(l, r);
         }
         return kerning;
