@@ -35,18 +35,18 @@ public class OpenTypeFont extends TrueTypeFont
     }
 
     /**
-     * Get the "cmap" table for this TTF.
+     * Get the "cff" table for this TTF.
      *
-     * @return The "cmap" table.
+     * @return The "cff" table.
      */
     public synchronized CFFTable getCFF() throws IOException
     {
-        CFFTable cmap = (CFFTable)tables.get(CFFTable.TAG);
-        if (cmap != null && !cmap.getInitialized())
+        CFFTable cff = (CFFTable)tables.get(CFFTable.TAG);
+        if (cff != null && !cff.getInitialized())
         {
-            readTable(cmap);
+            readTable(cff);
         }
-        return cmap;
+        return cff;
     }
 
     /**
