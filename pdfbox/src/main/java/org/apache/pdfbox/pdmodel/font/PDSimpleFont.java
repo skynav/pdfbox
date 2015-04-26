@@ -16,6 +16,11 @@
  */
 package org.apache.pdfbox.pdmodel.font;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.pdfbox.cos.COSBase;
@@ -27,10 +32,6 @@ import org.apache.pdfbox.pdmodel.font.encoding.GlyphList;
 import org.apache.pdfbox.pdmodel.font.encoding.MacRomanEncoding;
 import org.apache.pdfbox.pdmodel.font.encoding.StandardEncoding;
 import org.apache.pdfbox.pdmodel.font.encoding.WinAnsiEncoding;
-
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * A simple font. Simple fonts use a PostScript encoding vector.
@@ -45,7 +46,8 @@ public abstract class PDSimpleFont extends PDFont
     protected GlyphList glyphList;
     private Boolean isSymbolic;
     private final Set<Integer> noUnicode = new HashSet<Integer>(); // for logging
-
+    private Map<String, Integer> invertedEncoding; // for writing
+    
     /**
      * Constructor for embedding.
      */
@@ -88,7 +90,7 @@ public abstract class PDSimpleFont extends PDFont
      * Reads the Encoding from the Font dictionary or the embedded or substituted font file.
      * Must be called at the end of any subclass constructors.
      *
-     * @throws IOException if the font file could not be read
+     * @throws IOException if the font file could not be read.
      */
     protected final void readEncoding() throws IOException
     {
@@ -97,39 +99,11 @@ public abstract class PDSimpleFont extends PDFont
         {
             if (encoding instanceof COSName)
             {
-                COSName encodingName = (COSName)encoding;
-                this.encoding = Encoding.getInstance(encodingName);
-                if (this.encoding == null)
-                {
-                    LOG.warn("Unknown encoding: " + encodingName.getName());
-                    this.encoding = readEncodingFromFont(); // fallback
-                }
+                readEncodingFromName((COSName) encoding);
             }
             else if (encoding instanceof COSDictionary)
             {
-                COSDictionary encodingDict = (COSDictionary)encoding;
-                Encoding builtIn = null;
-                Boolean symbolic = getSymbolicFlag();
-                boolean isFlaggedAsSymbolic = symbolic != null && symbolic;
-                if (!encodingDict.containsKey(COSName.BASE_ENCODING) && isFlaggedAsSymbolic)
-                {
-                    builtIn = readEncodingFromFont();
-                }
-
-                if (symbolic == null)
-                {
-                    symbolic = false;
-                }
-
-                if (builtIn == null && !encodingDict.containsKey(COSName.BASE_ENCODING) && symbolic)
-                {
-                    // TTF built-in encoding is handled by PDTrueTypeFont#codeToGID
-                    this.encoding = null;
-                }
-                else
-                {
-                    this.encoding = new DictionaryEncoding(encodingDict, !symbolic, builtIn);
-                }
+                readEncodingFromDictionary((COSDictionary) encoding);
             }
         }
         else
@@ -163,10 +137,45 @@ public abstract class PDSimpleFont extends PDFont
         }
     }
 
+    private void readEncodingFromDictionary(COSDictionary encodingDict) throws IOException
+    {
+        Encoding builtIn = null;
+        Boolean symbolic = getSymbolicFlag();
+        boolean isFlaggedAsSymbolic = symbolic != null && symbolic;
+        if (!encodingDict.containsKey(COSName.BASE_ENCODING) && isFlaggedAsSymbolic)
+        {
+            builtIn = readEncodingFromFont();
+        }
+        if (symbolic == null)
+        {
+            symbolic = false;
+        }
+        if (builtIn == null && !encodingDict.containsKey(COSName.BASE_ENCODING) && symbolic)
+        {
+            // TTF built-in encoding is handled by PDTrueTypeFont#codeToGID
+            this.encoding = null;
+        }
+        else
+        {
+            this.encoding = new DictionaryEncoding(encodingDict, !symbolic, builtIn);
+        }
+    }
+    
+    private void readEncodingFromName(COSName encodingName) throws IOException
+    {
+        this.encoding = Encoding.getInstance(encodingName);
+        if (this.encoding == null)
+        {
+            LOG.warn("Unknown encoding: " + encodingName.getName());
+            // fallback
+            this.encoding = readEncodingFromFont();
+        }
+    }
+
     /**
      * Called by readEncoding() if the encoding needs to be extracted from the font file.
      *
-     * @throws IOException if the font file could not be read
+     * @throws IOException if the font file could not be read.
      */
     protected abstract Encoding readEncodingFromFont() throws IOException;
 
@@ -186,6 +195,29 @@ public abstract class PDSimpleFont extends PDFont
         return glyphList;
     }
 
+    /**
+     * Inverts the font's Encoding. Any duplicate (Name -> Code) mappings will be lost.
+     */
+    protected Map<String, Integer> getInvertedEncoding()
+    {
+        if (invertedEncoding != null)
+        {
+            return invertedEncoding;
+        }
+
+        invertedEncoding = new HashMap<String, Integer>();
+        //Map<Integer, String> codeToName = MacOSRomanEncoding.INSTANCE.getCodeToNameMap();
+        Map<Integer, String> codeToName = encoding.getCodeToNameMap();
+        for (Map.Entry<Integer, String> entry : codeToName.entrySet())
+        {
+            if (!invertedEncoding.containsKey(entry.getValue()))
+            {
+                invertedEncoding.put(entry.getValue(), entry.getKey());
+            }
+        }
+        return invertedEncoding;
+    }
+    
     /**
      * Returns true the font is a symbolic (that is, it does not use the Adobe Standard Roman
      * character set).
@@ -359,6 +391,7 @@ public abstract class PDSimpleFont extends PDFont
      * @param code character code
      * @return width in 1/1000 text space
      */
+    @Override
     protected final float getStandard14Width(int code)
     {
         if (getStandard14AFM() != null)
