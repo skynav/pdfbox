@@ -263,6 +263,18 @@ public class TTFParser
         {
             table = new KerningTable();
         }
+        else if (tag.equals(VerticalHeaderTable.TAG))
+        {
+            table = new VerticalHeaderTable();
+        }
+        else if (tag.equals(VerticalMetricsTable.TAG))
+        {
+            table = new VerticalMetricsTable();
+        }
+        else if (tag.equals(VerticalOriginTable.TAG))
+        {
+            table = new VerticalOriginTable();
+        }
         else
         {
             table = readTable(tag);
