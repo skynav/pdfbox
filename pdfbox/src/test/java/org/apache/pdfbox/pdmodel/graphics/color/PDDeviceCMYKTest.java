@@ -14,28 +14,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.pdfbox.pdmodel.common;
 
-import org.apache.pdfbox.cos.COSBase;
+package org.apache.pdfbox.pdmodel.graphics.color;
+
+import java.io.IOException;
+import junit.framework.TestCase;
 
 /**
- * This is an interface to represent a PDModel object that holds two COS objects.
+ * Test for power user creation of a custom default CMYK color space.
  *
- * @author Ben Litchfield
+ * @author John Hewson
  */
-public interface DualCOSObjectable
+public class PDDeviceCMYKTest extends TestCase
 {
-    /**
-     * Convert this standard java object to a COS object.
-     *
-     * @return The cos object that matches this Java object.
-     */
-    COSBase getFirstCOSObject();
-
-    /**
-     * Convert this standard java object to a COS object.
-     *
-     * @return The cos object that matches this Java object.
-     */
-    COSBase getSecondCOSObject();
+    public void testCMYK() throws IOException
+    {
+        PDDeviceCMYK.INSTANCE = new CustomDeviceCMYK();
+    }
+    
+    private static class CustomDeviceCMYK extends PDDeviceCMYK
+    {
+        protected CustomDeviceCMYK() throws IOException
+        {
+        }
+    }
 }

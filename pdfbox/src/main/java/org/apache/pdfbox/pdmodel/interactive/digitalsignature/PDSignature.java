@@ -22,7 +22,6 @@ import java.io.InputStream;
 import java.util.Calendar;
 
 import org.apache.pdfbox.cos.COSArray;
-import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSInteger;
 import org.apache.pdfbox.cos.COSName;
@@ -99,22 +98,11 @@ public class PDSignature implements COSObjectable
     }
 
     /**
-     * Convert this standard java object to a COS object.
-     *
-     * @return The cos object that matches this Java object.
-     */
-    @Override
-    public COSBase getCOSObject()
-    {
-        return getDictionary();
-    }
-
-    /**
      * Convert this standard java object to a COS dictionary.
      *
      * @return The COS dictionary that matches this Java object.
      */
-    public COSDictionary getDictionary()
+    public COSDictionary getCOSObject()
     {
         return dictionary;
     }

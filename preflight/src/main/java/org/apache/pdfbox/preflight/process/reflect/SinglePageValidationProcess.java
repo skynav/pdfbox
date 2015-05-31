@@ -109,7 +109,7 @@ public class SinglePageValidationProcess extends AbstractProcess
      * @param context the preflight context.
      * @param page the page to check.
      */
-    protected void validateColorSpaces(PreflightContext context, PDPage page) throws ValidationException
+    protected void validateColorSpaces(PreflightContext context, PDPage page)
     {
         PDResources resources = page.getResources();
         if (resources != null)
@@ -204,7 +204,7 @@ public class SinglePageValidationProcess extends AbstractProcess
             {
                 if (object instanceof PDAnnotation)
                 {
-                    COSDictionary cosAnnot = ((PDAnnotation) object).getDictionary();
+                    COSDictionary cosAnnot = ((PDAnnotation) object).getCOSObject();
                     ContextHelper.validateElement(context, cosAnnot, ANNOTATIONS_PROCESS);
                 }
             }

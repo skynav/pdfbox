@@ -39,7 +39,7 @@ public class TrueTypeFont implements Type1Equivalent, Closeable
     private int numberOfGlyphs = -1;
     private int unitsPerEm = -1;
     protected Map<String,TTFTable> tables = new HashMap<String,TTFTable>();
-    private TTFDataStream data;
+    private final TTFDataStream data;
     private Map<String, Integer> postScriptNames;
     
     /**
@@ -273,21 +273,6 @@ public class TrueTypeFont implements Type1Equivalent, Closeable
     }
     
     /**
-     * Get the "kern" table for this TTF.
-     * 
-     * @return The "kern" table.
-     */
-    public synchronized KerningTable getKerning() throws IOException
-    {
-        KerningTable kerning = (KerningTable)tables.get( KerningTable.TAG );
-        if (kerning != null && !kerning.getInitialized())
-        {
-            readTable(kerning);
-        }
-        return kerning;
-    }
-    
-    /**
      * Get the vhea table for this TTF.
      * 
      * @return The vhea table.
@@ -333,6 +318,21 @@ public class TrueTypeFont implements Type1Equivalent, Closeable
     }
     
     /**
+     * Get the "kern" table for this TTF.
+     * 
+     * @return The "kern" table.
+     */
+    public synchronized KerningTable getKerning() throws IOException
+    {
+        KerningTable kerning = (KerningTable)tables.get( KerningTable.TAG );
+        if (kerning != null && !kerning.getInitialized())
+        {
+            readTable(kerning);
+        }
+        return kerning;
+    }
+    
+    /**
      * This permit to get the data of the True Type Font
      * program representing the stream used to build this 
      * object (normally from the TTFParser object).
@@ -350,6 +350,8 @@ public class TrueTypeFont implements Type1Equivalent, Closeable
      * Read the given table if necessary. Package-private, used by TTFParser only.
      * 
      * @param table the table to be initialized
+     * 
+     * @throws IOException if there was an error reading the table.
      */
     void readTable(TTFTable table) throws IOException
     {

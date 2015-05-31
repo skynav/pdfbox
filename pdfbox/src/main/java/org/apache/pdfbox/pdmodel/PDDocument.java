@@ -24,10 +24,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.pdfbox.cos.COSArray;
@@ -53,13 +51,14 @@ import org.apache.pdfbox.pdmodel.encryption.SecurityHandler;
 import org.apache.pdfbox.pdmodel.encryption.SecurityHandlerFactory;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationWidget;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAppearanceDictionary;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAppearanceStream;
 import org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature;
 import org.apache.pdfbox.pdmodel.interactive.digitalsignature.SignatureInterface;
 import org.apache.pdfbox.pdmodel.interactive.digitalsignature.SignatureOptions;
 import org.apache.pdfbox.pdmodel.interactive.form.PDAcroForm;
-import org.apache.pdfbox.pdmodel.interactive.form.PDFieldTreeNode;
+import org.apache.pdfbox.pdmodel.interactive.form.PDField;
 import org.apache.pdfbox.pdmodel.interactive.form.PDSignatureField;
 
 /**
@@ -211,7 +210,7 @@ public class PDDocument implements Closeable
         }
         else
         {
-            acroForm.getDictionary().setNeedToBeUpdated(true);
+            acroForm.getCOSObject().setNeedToBeUpdated(true);
         }
 
         // For invisible signatures, the annotation has a rectangle array with values [ 0 0 0 0 ]. This annotation is
@@ -222,21 +221,30 @@ public class PDDocument implements Closeable
         // Create Annotation / Field for signature
         List<PDAnnotation> annotations = page.getAnnotations();
 
-        List<PDFieldTreeNode> fields = acroForm.getFields();
+        List<PDField> fields = acroForm.getFields();
         if (fields == null)
         {
-            fields = new ArrayList<PDFieldTreeNode>();
+            fields = new ArrayList<PDField>();
             acroForm.setFields(fields);
         }
         PDSignatureField signatureField = findSignatureField(fields, sigObject);
         if (signatureField == null)
         {
-            signatureField = createSignatureField(acroForm, sigObject, page); 
+            signatureField = new PDSignatureField(acroForm);
+            // set visibility flags
+            if (options.getVisualSignature() == null)
+            {
+                signatureField.getWidget().setAnnotationFlags(PDAnnotationWidget.FLAG_NO_VIEW);
+            }
+            // append the signature object
+            signatureField.setValue(sigObject);
+            // backward linking
+            signatureField.getWidget().setPage(page);
         }
 
         // Set the AcroForm Fields
-        List<PDFieldTreeNode> acroFormFields = acroForm.getFields();
-        acroForm.getDictionary().setDirect(true);
+        List<PDField> acroFormFields = acroForm.getFields();
+        acroForm.getCOSObject().setDirect(true);
         acroForm.setSignaturesExist(true);
         acroForm.setAppendOnly(true);
 
@@ -267,27 +275,16 @@ public class PDDocument implements Closeable
         page.getCOSObject().setNeedToBeUpdated(true);
     }
 
-    private PDSignatureField createSignatureField(PDAcroForm acroForm, PDSignature sigObject, PDPage page)
-            throws IOException
-    {
-        PDSignatureField signatureField = new PDSignatureField(acroForm);
-        // append the signature object
-        signatureField.setSignature(sigObject);
-        // backward linking
-        signatureField.getWidget().setPage(page);
-        return signatureField;
-    }
-
     // search acroform field list for signature field with specific signature dictionary
-    private PDSignatureField findSignatureField(List<PDFieldTreeNode> fields, PDSignature sigObject)
+    private PDSignatureField findSignatureField(List<PDField> fields, PDSignature sigObject)
     {
         PDSignatureField signatureField = null;
-        for (PDFieldTreeNode pdField : fields)
+        for (PDField pdField : fields)
         {
             if (pdField instanceof PDSignatureField)
             {
                 PDSignature signature = ((PDSignatureField) pdField).getSignature();
-                if (signature != null && signature.getDictionary().equals(sigObject.getDictionary()))
+                if (signature != null && signature.getCOSObject().equals(sigObject.getCOSObject()))
                 {
                     signatureField = (PDSignatureField) pdField;
                 }
@@ -297,18 +294,19 @@ public class PDDocument implements Closeable
     }
 
     // return true if the field already existed in the field list, in that case, it is marked for update
-    private boolean checkSignatureField(List<PDFieldTreeNode> acroFormFields, PDSignatureField signatureField)
+    private boolean checkSignatureField(List<PDField> acroFormFields, PDSignatureField signatureField)
     {
         boolean checkFields = false;
-        for (PDFieldTreeNode field : acroFormFields)
+        for (PDField field : acroFormFields)
         {
             if (field instanceof PDSignatureField
                     && field.getCOSObject().equals(signatureField.getCOSObject()))
             {
                 checkFields = true;
-                signatureField.getDictionary().setNeedToBeUpdated(true);
+                signatureField.getCOSObject().setNeedToBeUpdated(true);
                 break;
             }
+            // fixme: this code does not check non-terminal fields, there could be a descendant signature
         }
         if (!checkFields)
         {
@@ -386,7 +384,7 @@ public class PDDocument implements Closeable
         {
             dr.setDirect(true);
             dr.setNeedToBeUpdated(true);
-            COSDictionary acroFormDict = acroForm.getDictionary();
+            COSDictionary acroFormDict = acroForm.getCOSObject();
             acroFormDict.setItem(COSName.DR, dr);
         }
     }
@@ -434,7 +432,7 @@ public class PDDocument implements Closeable
             acroForm = new PDAcroForm(this);
             catalog.setAcroForm(acroForm);
         }
-        COSDictionary acroFormDict = acroForm.getDictionary();
+        COSDictionary acroFormDict = acroForm.getCOSObject();
         acroFormDict.setDirect(true);
         acroFormDict.setNeedToBeUpdated(true);
         if (!acroForm.isSignaturesExist())
@@ -443,11 +441,11 @@ public class PDDocument implements Closeable
             acroForm.setSignaturesExist(true); 
         }
 
-        List<PDFieldTreeNode> acroformFields = acroForm.getFields();
+        List<PDField> acroformFields = acroForm.getFields();
 
         for (PDSignatureField sigField : sigFields)
         {
-            sigField.getDictionary().setNeedToBeUpdated(true);
+            sigField.getCOSObject().setNeedToBeUpdated(true);
             
             // Check if the field already exists
             checkSignatureField(acroformFields, sigField);
@@ -455,7 +453,7 @@ public class PDDocument implements Closeable
             // Check if we need to add a signature
             if (sigField.getSignature() != null)
             {
-                sigField.getDictionary().setNeedToBeUpdated(true);
+                sigField.getCOSObject().setNeedToBeUpdated(true);
                 if (options == null)
                 {
                     // TODO ??
@@ -604,7 +602,7 @@ public class PDDocument implements Closeable
     public void setDocumentInformation(PDDocumentInformation info)
     {
         documentInformation = info;
-        document.getTrailer().setItem(COSName.INFO, info.getDictionary());
+        document.getTrailer().setItem(COSName.INFO, info.getCOSObject());
     }
 
     /**
@@ -694,14 +692,17 @@ public class PDDocument implements Closeable
      */
     public List<PDSignatureField> getSignatureFields() throws IOException
     {
-        List<PDSignatureField> fields = new LinkedList<PDSignatureField>();
+        List<PDSignatureField> fields = new ArrayList<PDSignatureField>();
         PDAcroForm acroForm = getDocumentCatalog().getAcroForm();
         if (acroForm != null)
         {
-            List<COSDictionary> signatureDictionary = document.getSignatureFields(false);
-            for (COSDictionary dict : signatureDictionary)
+            // fixme: non-terminal fields are ignored, could have descendant signatures
+            for (PDField field : acroForm.getFields())
             {
-                fields.add(new PDSignatureField(acroForm, dict, null));
+                if (field instanceof PDSignatureField)
+                {
+                    fields.add((PDSignatureField)field);
+                }
             }
         }
         return fields;
@@ -715,11 +716,14 @@ public class PDDocument implements Closeable
      */
     public List<PDSignature> getSignatureDictionaries() throws IOException
     {
-        List<COSDictionary> signatureDictionary = document.getSignatureDictionaries();
-        List<PDSignature> signatures = new LinkedList<PDSignature>();
-        for (COSDictionary dict : signatureDictionary)
+        List<PDSignature> signatures = new ArrayList<PDSignature>();
+        for (PDSignatureField field : getSignatureFields())
         {
-            signatures.add(new PDSignature(dict));
+            COSBase value = field.getCOSObject().getDictionaryObject(COSName.V);
+            if (value != null)
+            {
+                signatures.add(new PDSignature((COSDictionary)value));
+            }
         }
         return signatures;
     }

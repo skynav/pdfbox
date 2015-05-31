@@ -23,27 +23,35 @@ import java.util.Comparator;
 /**
  * A 'kern' table in a true type font.
  * 
- * @author Glenn Adams <gadams@apache.org>
+ * @author Glenn Adams
  */
 public class KerningSubtable extends TTFTable
 {
     // coverage field bit masks and values
-    private static final int COVERAGE_HORIZONTAL                = 0x0001;
-    private static final int COVERAGE_MINIMUMS                  = 0x0002;
-    private static final int COVERAGE_CROSS_STREAM              = 0x0004;
-    private static final int COVERAGE_FORMAT                    = 0xFF00;
+    private static final int COVERAGE_HORIZONTAL = 0x0001;
+    private static final int COVERAGE_MINIMUMS = 0x0002;
+    private static final int COVERAGE_CROSS_STREAM = 0x0004;
+    private static final int COVERAGE_FORMAT = 0xFF00;
 
-    private static final int COVERAGE_HORIZONTAL_SHIFT          = 0;
-    private static final int COVERAGE_MINIMUMS_SHIFT            = 1;
-    private static final int COVERAGE_CROSS_STREAM_SHIFT        = 2;
-    private static final int COVERAGE_FORMAT_SHIFT              = 8;
+    private static final int COVERAGE_HORIZONTAL_SHIFT = 0;
+    private static final int COVERAGE_MINIMUMS_SHIFT = 1;
+    private static final int COVERAGE_CROSS_STREAM_SHIFT = 2;
+    private static final int COVERAGE_FORMAT_SHIFT = 8;
 
-    private boolean horizontal;                                 // true if horizontal kerning
-    private boolean minimums;                                   // true if mimimum adjustment values (versus kerning values)
-    private boolean crossStream;                                // true if cross-stream (block progression) kerning
-    private PairData pairs;                                     // format specific pair data
+    // true if horizontal kerning
+    private boolean horizontal;
+    // true if mimimum adjustment values (versus kerning values)
+    private boolean minimums; 
+    // true if cross-stream (block progression) kerning
+    private boolean crossStream;
+    // format specific pair data
+    private PairData pairs; 
 
-    public KerningSubtable() {
+    /**
+     * Constructor.
+     */
+    public KerningSubtable()
+    {
     }
 
     /**
@@ -51,42 +59,64 @@ public class KerningSubtable extends TTFTable
      * 
      * @param ttf The font that is being read.
      * @param data The stream to read the data from.
+     * @param version The version of the table to be read
      * @throws IOException If there is an error reading the data.
      */
     public void read(TrueTypeFont ttf, TTFDataStream data, int version) throws IOException
     {
         if (version == 0)
+        {
             readSubtable0(ttf, data);
+        }
         else if (version == 1)
+        {
+            
             readSubtable1(ttf, data);
+        }
         else
+        {
             throw new IllegalStateException();
+        }
     }
 
-    public boolean isHorizontalKerning() {
+    public boolean isHorizontalKerning()
+    {
         return isHorizontalKerning(false);
     }
 
-    public boolean isHorizontalKerning(boolean cross) {
+    public boolean isHorizontalKerning(boolean cross)
+    {
         if (!horizontal)
+        {
             return false;
+        }
         else if (minimums)
+        {
             return false;
+        }
         else if (cross)
+        {
             return crossStream;
+        }
         else
+        {
             return !crossStream;
+        }
     }
 
-    public int[] getKerning(int[] glyphs) {
+    public int[] getKerning(int[] glyphs)
+    {
         int ng = glyphs.length;
         int[] kerning = new int[ng];
-        for (int i = 0; i < ng; ++i) {
+        for (int i = 0; i < ng; ++i)
+        {
             int l = glyphs[i];
             int r = -1;
-            for (int k = i + 1; k < ng; ++k) {
+            for (int k = i + 1; k < ng; ++k)
+            {
                 int g = glyphs[k];
-                if (g >= 0) {
+                if (g >= 0)
+                {
                     r = g;
                     break;
                 }
@@ -96,7 +126,8 @@ public class KerningSubtable extends TTFTable
         return kerning;
     }
 
-    public int getKerning(int l, int r) {
+    public int getKerning(int l, int r)
+    {
         return pairs.getKerning(l, r);
     }
 
@@ -104,66 +135,95 @@ public class KerningSubtable extends TTFTable
     {
         int version = data.readUnsignedShort();
         if (version != 0)
-            throw new UnsupportedOperationException("Unsupported kerning sub-table version: " + version); 
+        {
+            throw new UnsupportedOperationException("Unsupported kerning sub-table version: "
+                    + version);
+        }
         int length = data.readUnsignedShort();
         if (length < 6)
-            throw new IOException("Kerning sub-table too short, got " + length + " bytes, expect 6 or more.");
+        {
+            throw new IOException("Kerning sub-table too short, got " + length
+                    + " bytes, expect 6 or more.");
+        }
         int coverage = data.readUnsignedShort();
         if (isBitsSet(coverage, COVERAGE_HORIZONTAL, COVERAGE_HORIZONTAL_SHIFT))
+        {
             this.horizontal = true;
+        }
         if (isBitsSet(coverage, COVERAGE_MINIMUMS, COVERAGE_MINIMUMS_SHIFT))
+        {
             this.minimums = true;
+        }
         if (isBitsSet(coverage, COVERAGE_CROSS_STREAM, COVERAGE_CROSS_STREAM_SHIFT))
+        {
             this.crossStream = true;
+        }
         int format = getBits(coverage, COVERAGE_FORMAT, COVERAGE_FORMAT_SHIFT);
         if ((format != 0) && (format != 2))
-            throw new UnsupportedOperationException("Unsupported kerning sub-table format: " + format); 
+        {
+            throw new UnsupportedOperationException("Unsupported kerning sub-table format: "
+                    + format);
+        }
         if (format == 0)
+        {
             readSubtable0Format0(ttf, data);
+        }
         else if (format == 2)
+        {
             readSubtable0Format2(ttf, data);
+        }
     }
 
     private void readSubtable0Format0(TrueTypeFont ttf, TTFDataStream data) throws IOException
     {
-        PairData pairs = new PairData0Format0();
+        pairs = new PairData0Format0();
         pairs.read(data);
-        this.pairs = pairs;
     }
 
     private void readSubtable0Format2(TrueTypeFont ttf, TTFDataStream data) throws IOException
     {
-        throw new UnsupportedOperationException("Kerning table version 0 format 2 not yet supported.");
+        throw new UnsupportedOperationException(
+                "Kerning table version 0 format 2 not yet supported.");
     }
 
     private void readSubtable1(TrueTypeFont ttf, TTFDataStream data) throws IOException
     {
-        throw new UnsupportedOperationException("Kerning table version 1 formats not yet supported.");
+        throw new UnsupportedOperationException(
+                "Kerning table version 1 formats not yet supported.");
     }
 
-    private static boolean isBitsSet(int bits, int mask, int shift) {
+    private static boolean isBitsSet(int bits, int mask, int shift)
+    {
         return getBits(bits, mask, shift) != 0;
     }
 
-    private static int getBits(int bits, int mask, int shift) {
+    private static int getBits(int bits, int mask, int shift)
+    {
         return (bits & mask) >> shift;
     }
 
-    static abstract class PairData {
+    abstract static class PairData
+    {
         public abstract void read(TTFDataStream data) throws IOException;
+
         public abstract int getKerning(int l, int r);
     }
 
-    static class PairData0Format0 extends PairData implements Comparator<int[]> {
+    static class PairData0Format0 extends PairData implements Comparator<int[]>
+    {
         private int searchRange;
         private int[][] pairs;
-        public void read(TTFDataStream data) throws IOException {
+
+        @Override
+        public void read(TTFDataStream data) throws IOException
+        {
             int numPairs = data.readUnsignedShort();
-            int searchRange = data.readUnsignedShort();
+            searchRange = data.readUnsignedShort()/6;
             int entrySelector = data.readUnsignedShort();
             int rangeShift = data.readUnsignedShort();
-            int[][] pairs = new int[numPairs][3];
-            for (int i = 0; i < numPairs; ++i) {
+            pairs = new int[numPairs][3];
+            for (int i = 0; i < numPairs; ++i)
+            {
                 int left = data.readUnsignedShort();
                 int right = data.readUnsignedShort();
                 int value = data.readSignedShort();
@@ -171,21 +231,29 @@ public class KerningSubtable extends TTFTable
                 pairs[i][1] = right;
                 pairs[i][2] = value;
             }
-            this.searchRange = searchRange / 6;
-            this.pairs = pairs;
         }
-        public int getKerning(int l, int r) {
+
+        @Override
+        public int getKerning(int l, int r)
+        {
             int[] key = new int[] { l, r, 0 };
             int index;
             index = Arrays.binarySearch(pairs, 0, searchRange, key, this);
             if (index >= 0)
+            {
                 return pairs[index][2];
+            }
             index = Arrays.binarySearch(pairs, searchRange, pairs.length, key, this);
             if (index >= 0)
+            {
                 return pairs[searchRange + index][2];
+            }
             return 0;
         }
-        public int compare(int[] p1, int[] p2) {
+
+        @Override
+        public int compare(int[] p1, int[] p2)
+        {
             assert p1 != null;
             assert p1.length >= 2;
             assert p2 != null;
@@ -193,18 +261,29 @@ public class KerningSubtable extends TTFTable
             int l1 = p1[0];
             int l2 = p2[0];
             if (l1 < l2)
+            {
                 return -1;
+            }
             else if (l1 > l2)
+            {
                 return 1;
-            else {
+            }
+            else
+            {
                 int r1 = p1[1];
                 int r2 = p2[1];
                 if (r1 < r2)
+                {
                     return -1;
+                }
                 else if (r1 > r2)
+                {
                     return 1;
+                }
                 else
+                {
                     return 0;
+                }
             }
         }
     }

@@ -128,7 +128,7 @@ public final class PublicKeySecurityHandler extends SecurityHandler
                     "Provided decryption material is not compatible with the document");
         }
 
-        decryptMetadata = encryption.isEncryptMetaData();
+        setDecryptMetadata(encryption.isEncryptMetaData());
         if (encryption.getLength() != 0)
         {
             this.keyLength = encryption.getLength();
@@ -207,8 +207,9 @@ public final class PublicKeySecurityHandler extends SecurityHandler
             byte[] accessBytes = new byte[4];
             System.arraycopy(envelopedData, 20, accessBytes, 0, 4);
 
-            currentAccessPermission = new AccessPermission(accessBytes);
+            AccessPermission currentAccessPermission = new AccessPermission(accessBytes);
             currentAccessPermission.setReadOnly();
+            setCurrentAccessPermission(currentAccessPermission);
 
             // what we will put in the SHA1 = the seed + each byte contained in the recipients array
             byte[] sha1Input = new byte[recipientFieldsLength + 20];
@@ -297,6 +298,10 @@ public final class PublicKeySecurityHandler extends SecurityHandler
             dictionary.setFilter(FILTER);
             dictionary.setLength(this.keyLength);
             dictionary.setVersion(2);
+            
+            // remove CF, StmF, and StrF entries that may be left from a previous encryption
+            dictionary.removeV45filters();
+            
             dictionary.setSubFilter(SUBFILTER);
 
             // create the 20 bytes seed

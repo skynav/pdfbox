@@ -30,8 +30,8 @@ import java.io.IOException;
  * 
  * This table is specified in both the TrueType and OpenType specifications.
  * 
- * @author Glenn Adams <gadams@apache.org>
- * @author Ben Litchfield
+ * @author Glenn Adams
+ * 
  */
 public class VerticalHeaderTable extends TTFTable
 {
@@ -65,6 +65,7 @@ public class VerticalHeaderTable extends TTFTable
      * @param data The stream to read the data from.
      * @throws IOException If there is an error reading the data.
      */
+    @Override
     public void read(TrueTypeFont ttf, TTFDataStream data) throws IOException
     {
         version = data.read32Fixed();

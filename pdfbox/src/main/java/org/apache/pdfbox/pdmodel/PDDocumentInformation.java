@@ -20,7 +20,6 @@ import java.util.Calendar;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
 
@@ -62,22 +61,11 @@ public class PDDocumentInformation implements COSObjectable
      *
      * @return The underlying info dictionary.
      */
-    public COSDictionary getDictionary()
-    {
-        return info;
-    }
-
-    /**
-     * Convert this standard java object to a COS object.
-     *
-     * @return The cos object that matches this Java object.
-     */
     @Override
-    public COSBase getCOSObject()
+    public COSDictionary getCOSObject()
     {
         return info;
-    }
-    
+    }    
     
     /**
      * Return the properties String value.

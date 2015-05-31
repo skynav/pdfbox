@@ -21,7 +21,7 @@ import java.io.IOException;
 /**
  * A 'kern' table in a true type font.
  * 
- * @author Glenn Adams <gadams@apache.org>
+ * @author Glenn Adams
  */
 public class KerningTable extends TTFTable
 {
@@ -39,26 +39,34 @@ public class KerningTable extends TTFTable
      * @param data The stream to read the data from.
      * @throws IOException If there is an error reading the data.
      */
+    @Override
     public void read(TrueTypeFont ttf, TTFDataStream data) throws IOException
     {
         int version = data.readUnsignedShort();
         if (version != 0)
+        {
             version = (version << 16) | data.readUnsignedShort();
+        }
         if (version > 1)
-            throw new UnsupportedOperationException("Unsupported kerning table version: " + version); 
+        {
+            throw new UnsupportedOperationException("Unsupported kerning table version: " + version);
+        }
         int numSubtables;
         if (version == 0)
+        {
             numSubtables = data.readUnsignedShort();
+        }
         else
+        {
             numSubtables = (int) data.readUnsignedInt();
-        KerningSubtable[] subtables = new KerningSubtable[numSubtables];
+        }
+        subtables = new KerningSubtable[numSubtables];
         for (int i = 0; i < numSubtables; ++i)
         {
             KerningSubtable subtable = new KerningSubtable();
             subtable.read(ttf, data, version);
             subtables[i] = subtable;
         }
-        this.subtables = subtables;
         initialized = true;
     }
 
@@ -67,7 +75,8 @@ public class KerningTable extends TTFTable
      * 
      * @return first matching subtable or null if none found
      */
-    public KerningSubtable getHorizontalKerningSubtable() {
+    public KerningSubtable getHorizontalKerningSubtable()
+    {
         return getHorizontalKerningSubtable(false);
     }
 
@@ -77,10 +86,14 @@ public class KerningTable extends TTFTable
      * @param cross true if requesting cross stream horizontal kerning
      * @return first matching subtable or null if none found
      */
-    public KerningSubtable getHorizontalKerningSubtable(boolean cross) {
-        for (KerningSubtable s : subtables) {
+    public KerningSubtable getHorizontalKerningSubtable(boolean cross)
+    {
+        for (KerningSubtable s : subtables)
+        {
             if (s.isHorizontalKerning(cross))
+            {
                 return s;
+            }
         }
         return null;
     }

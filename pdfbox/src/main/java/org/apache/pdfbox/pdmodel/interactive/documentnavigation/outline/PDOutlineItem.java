@@ -25,6 +25,7 @@ import org.apache.pdfbox.cos.COSFloat;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDestinationNameTreeNode;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDDocumentNameDestinationDictionary;
 import org.apache.pdfbox.pdmodel.PDDocumentNameDictionary;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.documentinterchange.logicalstructure.PDStructureElement;
@@ -138,7 +139,7 @@ public final class PDOutlineItem extends PDOutlineNode
      */
     void setPreviousSibling(PDOutlineNode outlineNode)
     {
-        getCOSDictionary().setItem(COSName.PREV, outlineNode);
+        getCOSObject().setItem(COSName.PREV, outlineNode);
     }
 
     /**
@@ -156,7 +157,7 @@ public final class PDOutlineItem extends PDOutlineNode
      */
     void setNextSibling(PDOutlineNode outlineNode)
     {
-        getCOSDictionary().setItem(COSName.NEXT, outlineNode);
+        getCOSObject().setItem(COSName.NEXT, outlineNode);
     }
 
     /**
@@ -166,7 +167,7 @@ public final class PDOutlineItem extends PDOutlineNode
      */
     public String getTitle()
     {
-        return getCOSDictionary().getString(COSName.TITLE);
+        return getCOSObject().getString(COSName.TITLE);
     }
 
     /**
@@ -176,7 +177,7 @@ public final class PDOutlineItem extends PDOutlineNode
      */
     public void setTitle(String title)
     {
-        getCOSDictionary().setString(COSName.TITLE, title);
+        getCOSObject().setString(COSName.TITLE, title);
     }
 
     /**
@@ -187,7 +188,7 @@ public final class PDOutlineItem extends PDOutlineNode
      */
     public PDDestination getDestination() throws IOException
     {
-        return PDDestination.create(getCOSDictionary().getDictionaryObject(COSName.DEST));
+        return PDDestination.create(getCOSObject().getDictionaryObject(COSName.DEST));
     }
 
     /**
@@ -197,7 +198,7 @@ public final class PDOutlineItem extends PDOutlineNode
      */
     public void setDestination(PDDestination dest)
     {
-        getCOSDictionary().setItem(COSName.DEST, dest);
+        getCOSObject().setItem(COSName.DEST, dest);
     }
 
     /**
@@ -218,77 +219,88 @@ public final class PDOutlineItem extends PDOutlineNode
 
     /**
      * This method will attempt to find the page in this PDF document that this outline points to.
-     * If the outline does not point to anything then this method will return null.  If the outline
-     * is an action that is not a GoTo action then this methods will throw the OutlineNotLocationException
+     * If the outline does not point to anything then this method will return null. If the outline
+     * is an action that is not a GoTo action then this method will also return null.
      *
      * @param doc The document to get the page from.
      *
-     * @return The page that this outline will go to when activated or null if it does not point to anything.
+     * @return The page that this outline will go to when activated or null if it does not point to
+     * anything.
      * @throws IOException If there is an error when trying to find the page.
      */
-    public PDPage findDestinationPage( PDDocument doc ) throws IOException
+    public PDPage findDestinationPage(PDDocument doc) throws IOException
     {
         PDDestination dest = getDestination();
-        if( dest == null )
+        if (dest == null)
         {
             PDAction outlineAction = getAction();
-            if( outlineAction instanceof PDActionGoTo )
+            if (outlineAction instanceof PDActionGoTo)
             {
-                dest = ((PDActionGoTo)outlineAction).getDestination();
-            }
-            else
-            {
-                return null;
+                dest = ((PDActionGoTo) outlineAction).getDestination();
             }
         }
-
-        PDPageDestination pageDestination;
-        if( dest instanceof PDNamedDestination )
-        {
-            //if we have a named destination we need to lookup the PDPageDestination
-            PDNamedDestination namedDest = (PDNamedDestination)dest;
-            PDDocumentNameDictionary namesDict = doc.getDocumentCatalog().getNames();
-            if( namesDict != null )
-            {
-                PDDestinationNameTreeNode destsTree = namesDict.getDests();
-                if( destsTree != null )
-                {
-                    pageDestination = (PDPageDestination)destsTree.getValue( namedDest.getNamedDestination() );
-                }
-                else
-                {
-                    return null;
-                }
-            }
-            else
-            {
-                return null;
-            }
-        }
-        else if( dest instanceof PDPageDestination)
-        {
-            pageDestination = (PDPageDestination) dest;
-        }
-        else if( dest == null )
+        if (dest == null)
         {
             return null;
         }
+
+        PDPageDestination pageDestination = null;
+        if (dest instanceof PDNamedDestination)
+        {
+            pageDestination = findNamedDestinationPage((PDNamedDestination) dest, doc);
+            if (pageDestination == null)
+            {
+                return null;
+            }
+        }
+        else if (dest instanceof PDPageDestination)
+        {
+            pageDestination = (PDPageDestination) dest;
+        }
         else
         {
-            throw new IOException( "Error: Unknown destination type " + dest );
+            throw new IOException("Error: Unknown destination type " + dest);
         }
 
         PDPage page = pageDestination.getPage();
-        if( page == null )
+        if (page == null)
         {
+            // Malformed PDF: local destinations must have a page object,
+            // not a page number, these are meant for remote destinations.
             int pageNumber = pageDestination.getPageNumber();
-            if( pageNumber != -1 )
+            if (pageNumber != -1)
             {
-                page = doc.getPage( pageNumber - 1 );
+                page = doc.getPage(pageNumber);
             }
         }
-
         return page;
+    }
+
+    //if we have a named destination we need to lookup the PDPageDestination
+    private PDPageDestination findNamedDestinationPage(PDNamedDestination namedDest, PDDocument doc)
+            throws IOException
+    {
+        PDPageDestination pageDestination = null;
+        PDDocumentNameDictionary namesDict = doc.getDocumentCatalog().getNames();
+        if (namesDict != null)
+        {
+            PDDestinationNameTreeNode destsTree = namesDict.getDests();
+            if (destsTree != null)
+            {
+                pageDestination = destsTree.getValue(namedDest.getNamedDestination());
+            }
+        }
+        if (pageDestination == null)
+        {
+            // Look up /Dests dictionary from catalog
+            PDDocumentNameDestinationDictionary nameDestDict = doc.getDocumentCatalog().getDests();
+            if (nameDestDict != null)
+            {
+                String name = namedDest.getNamedDestination();
+                pageDestination = (PDPageDestination) nameDestDict.getDestination(name);
+            }
+        }
+        return pageDestination;
     }
 
     /**
@@ -298,7 +310,7 @@ public final class PDOutlineItem extends PDOutlineNode
      */
     public PDAction getAction()
     {
-        return PDActionFactory.createAction((COSDictionary) getCOSDictionary().getDictionaryObject(COSName.A));
+        return PDActionFactory.createAction((COSDictionary) getCOSObject().getDictionaryObject(COSName.A));
     }
 
     /**
@@ -308,7 +320,7 @@ public final class PDOutlineItem extends PDOutlineNode
      */
     public void setAction( PDAction action )
     {
-        getCOSDictionary().setItem(COSName.A, action);
+        getCOSObject().setItem(COSName.A, action);
     }
 
     /**
@@ -319,7 +331,7 @@ public final class PDOutlineItem extends PDOutlineNode
     public PDStructureElement getStructureElement()
     {
         PDStructureElement se = null;
-        COSDictionary dic = (COSDictionary) getCOSDictionary().getDictionaryObject(COSName.SE);
+        COSDictionary dic = (COSDictionary) getCOSObject().getDictionaryObject(COSName.SE);
         if( dic != null )
         {
             se = new PDStructureElement( dic );
@@ -334,7 +346,7 @@ public final class PDOutlineItem extends PDOutlineNode
      */
     public void setStructuredElement( PDStructureElement structureElement )
     {
-        getCOSDictionary().setItem(COSName.SE, structureElement);
+        getCOSObject().setItem(COSName.SE, structureElement);
     }
 
     /**
@@ -345,12 +357,12 @@ public final class PDOutlineItem extends PDOutlineNode
      */
     public PDColor getTextColor()
     {
-        COSArray csValues = (COSArray) getCOSDictionary().getDictionaryObject(COSName.C);
+        COSArray csValues = (COSArray) getCOSObject().getDictionaryObject(COSName.C);
         if( csValues == null )
         {
             csValues = new COSArray();
             csValues.growToSize( 3, new COSFloat( 0 ) );
-            getCOSDictionary().setItem( COSName.C, csValues );
+            getCOSObject().setItem( COSName.C, csValues );
         }
         return new PDColor(csValues, PDDeviceRGB.INSTANCE);
     }
@@ -362,7 +374,7 @@ public final class PDOutlineItem extends PDOutlineNode
      */
     public void setTextColor( PDColor textColor )
     {
-        getCOSDictionary().setItem( COSName.C, textColor.toCOSArray() );
+        getCOSObject().setItem( COSName.C, textColor.toCOSArray() );
     }
 
     /**
@@ -376,7 +388,7 @@ public final class PDOutlineItem extends PDOutlineNode
         array.add( new COSFloat( textColor.getRed()/255f));
         array.add( new COSFloat( textColor.getGreen()/255f));
         array.add( new COSFloat( textColor.getBlue()/255f));
-        getCOSDictionary().setItem( COSName.C, array );
+        getCOSObject().setItem( COSName.C, array );
     }
 
     /**
@@ -386,7 +398,7 @@ public final class PDOutlineItem extends PDOutlineNode
      */
     public boolean isItalic()
     {
-        return getCOSDictionary().getFlag( COSName.F, ITALIC_FLAG );
+        return getCOSObject().getFlag( COSName.F, ITALIC_FLAG );
     }
 
     /**
@@ -396,7 +408,7 @@ public final class PDOutlineItem extends PDOutlineNode
      */
     public void setItalic( boolean italic )
     {
-        getCOSDictionary().setFlag( COSName.F, ITALIC_FLAG, italic );
+        getCOSObject().setFlag( COSName.F, ITALIC_FLAG, italic );
     }
 
     /**
@@ -406,7 +418,7 @@ public final class PDOutlineItem extends PDOutlineNode
      */
     public boolean isBold()
     {
-        return getCOSDictionary().getFlag( COSName.F, BOLD_FLAG );
+        return getCOSObject().getFlag( COSName.F, BOLD_FLAG );
     }
 
     /**
@@ -416,7 +428,7 @@ public final class PDOutlineItem extends PDOutlineNode
      */
     public void setBold( boolean bold )
     {
-        getCOSDictionary().setFlag( COSName.F, BOLD_FLAG, bold );
+        getCOSObject().setFlag( COSName.F, BOLD_FLAG, bold );
     }
 
 }

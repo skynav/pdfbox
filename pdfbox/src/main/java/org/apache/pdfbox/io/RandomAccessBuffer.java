@@ -184,10 +184,16 @@ public class RandomAccessBuffer implements RandomAccess, Closeable, Cloneable
         }
         int maxLength = (int) Math.min(length, this.size-pointer);
         long remainingBytes = CHUNK_SIZE - currentBufferPointer;
+        if (remainingBytes == 0)
+        {
+            nextBuffer();
+            remainingBytes = CHUNK_SIZE;
+        }
         if (maxLength >= remainingBytes)
         {
             // copy the first bytes from the current buffer
             System.arraycopy(currentBuffer, (int)currentBufferPointer, b, offset, (int)remainingBytes);
+            currentBufferPointer += remainingBytes;
             int newOffset = offset + (int)remainingBytes;
             long remainingBytes2Read = length - remainingBytes;
             // determine how many buffers are needed to get the remaining amount bytes
@@ -197,6 +203,7 @@ public class RandomAccessBuffer implements RandomAccess, Closeable, Cloneable
                 nextBuffer();
                 System.arraycopy(currentBuffer, 0, b, newOffset, CHUNK_SIZE);
                 newOffset += CHUNK_SIZE;
+                currentBufferPointer = CHUNK_SIZE;
             }
             remainingBytes2Read = remainingBytes2Read % CHUNK_SIZE;
             // are there still some bytes to be read?
@@ -204,7 +211,7 @@ public class RandomAccessBuffer implements RandomAccess, Closeable, Cloneable
             {
                 nextBuffer();
                 System.arraycopy(currentBuffer, 0, b, newOffset, (int)remainingBytes2Read);
-                currentBufferPointer += remainingBytes2Read;
+                currentBufferPointer = remainingBytes2Read;
             }
         }
         else
@@ -354,9 +361,75 @@ public class RandomAccessBuffer implements RandomAccess, Closeable, Cloneable
         
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean isClosed()
     {
         return currentBuffer == null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isEOF() throws IOException
+    {
+        int peek = peek();
+        return peek == -1;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int available() throws IOException
+    {
+        return (int) Math.min(length() - getPosition(), Integer.MAX_VALUE);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int peek() throws IOException
+    {
+        int result = read();
+        if (result != -1)
+        {
+            rewind(1);
+        }
+        return result;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void rewind(int bytes) throws IOException
+    {
+        checkClosed();
+        seek(getPosition() - bytes);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public byte[] readFully(int length) throws IOException
+    {
+        byte[] b = new byte[length];
+        read(b, 0, length);
+        return b;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int read(byte[] b) throws IOException
+    {
+        return read(b, 0, b.length);
     }
 }

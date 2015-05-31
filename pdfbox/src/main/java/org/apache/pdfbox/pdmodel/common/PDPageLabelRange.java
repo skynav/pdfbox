@@ -16,7 +16,6 @@
  */
 package org.apache.pdfbox.pdmodel.common;
 
-import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
 
@@ -91,13 +90,8 @@ public class PDPageLabelRange implements COSObjectable
      * 
      * @return the underlying dictionary.
      */
-    public COSDictionary getCOSDictionary()
-    {
-        return root;
-    }
-
     @Override
-    public COSBase getCOSObject()
+    public COSDictionary getCOSObject()
     {
         return root;
     }
