@@ -67,6 +67,7 @@ import org.apache.pdfbox.cos.COSObject;
 import org.apache.pdfbox.cos.COSObjectKey;
 import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.cos.COSString;
+import org.apache.pdfbox.io.RandomAccessBufferedFileInputStream;
 import org.apache.pdfbox.pdfparser.PDFObjectStreamParser;
 import org.apache.pdfbox.pdfparser.PDFParser;
 import org.apache.pdfbox.pdfparser.XrefTrailerResolver.XRefType;
@@ -98,19 +99,22 @@ public class PreflightParser extends PDFParser
 
     public PreflightParser(File file) throws IOException
     {
-        super(file);
+        // TODO move file handling outside of the parser
+        super(new RandomAccessBufferedFileInputStream(file));
         this.setLenient(false);
         this.originalDocument = new FileDataSource(file);
     }
 
     public PreflightParser(String filename) throws IOException
     {
+        // TODO move file handling outside of the parser
         this(new File(filename));
     }
 
     public PreflightParser(DataSource input) throws IOException
     {
-        super(input.getInputStream());
+        // TODO move file handling outside of the parser
+        super(new RandomAccessBufferedFileInputStream(input.getInputStream()));
         this.setLenient(false);
         this.originalDocument = input;
     }
@@ -802,7 +806,6 @@ public class PreflightParser extends PDFParser
                     // parse object stream
                     PDFObjectStreamParser parser = new PDFObjectStreamParser((COSStream) objstmBaseObj, document);
                     parser.parse();
-                    parser.close();
 
                     // get set of object numbers referenced for this object stream
                     final Set<Long> refObjNrs = xrefTrailerResolver.getContainedObjectNumbers(objstmObjNr);

@@ -361,7 +361,17 @@ public final class COSName extends COSBase implements Comparable<COSName>
     public static final COSName OCGS = new COSName("OCGs");
     public static final COSName OCPROPERTIES = new COSName("OCProperties");
     public static final COSName OE = new COSName("OE");
+    
+    /**
+     * "OFF", to be used for OCGs, not for Acroform
+     */
     public static final COSName OFF = new COSName("OFF");
+    
+    /**
+     * "Off", to be used for Acroform, not for OCGs
+     */
+    public static final COSName Off = new COSName("Off");    
+    
     public static final COSName ON = new COSName("ON");
     public static final COSName OP = new COSName("OP");
     public static final COSName OP_NS = new COSName("op");
@@ -387,6 +397,7 @@ public final class COSName extends COSBase implements Comparable<COSName>
     public static final COSName PAGE_MODE = new COSName("PageMode");
     public static final COSName PAGES = new COSName("Pages");
     public static final COSName PAINT_TYPE = new COSName("PaintType");
+    public static final COSName PANOSE = new COSName("Panose");    
     public static final COSName PARAMS = new COSName("Params");
     public static final COSName PARENT = new COSName("Parent");
     public static final COSName PARENT_TREE = new COSName("ParentTree");
@@ -464,6 +475,7 @@ public final class COSName extends COSBase implements Comparable<COSName>
     public static final COSName STRUCT_PARENT = new COSName("StructParent");
     public static final COSName STRUCT_PARENTS = new COSName("StructParents");
     public static final COSName STRUCT_TREE_ROOT = new COSName("StructTreeRoot");
+    public static final COSName STYLE = new COSName("Style");
     public static final COSName SUB_FILTER = new COSName("SubFilter");
     public static final COSName SUBJ = new COSName("Subj");
     public static final COSName SUBJECT = new COSName("Subject");

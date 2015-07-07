@@ -20,13 +20,18 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 /**
  * A 'kern' table in a true type font.
  * 
  * @author Glenn Adams
  */
-public class KerningSubtable extends TTFTable
+public class KerningSubtable
 {
+    private static final Log LOG = LogFactory.getLog(KerningSubtable.class);
+
     // coverage field bit masks and values
     private static final int COVERAGE_HORIZONTAL = 0x0001;
     private static final int COVERAGE_MINIMUMS = 0x0002;
@@ -45,33 +50,29 @@ public class KerningSubtable extends TTFTable
     // true if cross-stream (block progression) kerning
     private boolean crossStream;
     // format specific pair data
-    private PairData pairs; 
+    private PairData pairs;
 
-    /**
-     * Constructor.
-     */
-    public KerningSubtable()
+    KerningSubtable()
     {
     }
-
+    
     /**
      * This will read the required data from the stream.
      * 
-     * @param ttf The font that is being read.
      * @param data The stream to read the data from.
      * @param version The version of the table to be read
      * @throws IOException If there is an error reading the data.
      */
-    public void read(TrueTypeFont ttf, TTFDataStream data, int version) throws IOException
+    public void read(TTFDataStream data, int version) throws IOException
     {
         if (version == 0)
         {
-            readSubtable0(ttf, data);
+            readSubtable0(data);
         }
         else if (version == 1)
         {
             
-            readSubtable1(ttf, data);
+            readSubtable1(data);
         }
         else
         {
@@ -79,11 +80,27 @@ public class KerningSubtable extends TTFTable
         }
     }
 
+    /**
+     * Determine if subtable is designated for use in horizontal writing modes and
+     * contains inline progression kerning pairs (not block progression "cross stream")
+     * kerning pairs.
+     *
+     * @return true if subtable is for horizontal kerning
+     */
     public boolean isHorizontalKerning()
     {
         return isHorizontalKerning(false);
     }
 
+    /**
+     * Determine if subtable is designated for use in horizontal writing modes, contains
+     * kerning pairs (as opposed to minimum pairs), and, if CROSS is true, then return
+     * cross stream designator; otherwise, if CROSS is false, return true if cross stream
+     * designator is false.
+     *
+     * @param cross if true, then return cross stream designator in horizontal modes
+     * @return true if subtable is for horizontal kerning in horizontal modes
+     */
     public boolean isHorizontalKerning(boolean cross)
     {
         if (!horizontal)
@@ -104,34 +121,64 @@ public class KerningSubtable extends TTFTable
         }
     }
 
+    /**
+     * Obtain kerning adjustments for GLYPHS sequence, where the
+     * Nth returned adjustment is associated with the Nth glyph
+     * and the succeeding non-zero glyph in the GLYPHS sequence.
+     *
+     * Kerning adjustments are returned in font design coordinates.
+     *
+     * @param glyphs a (possibly empty) array of glyph identifiers
+     * @return a (possibly empty) array of kerning adjustments
+     */
     public int[] getKerning(int[] glyphs)
     {
-        int ng = glyphs.length;
-        int[] kerning = new int[ng];
-        for (int i = 0; i < ng; ++i)
+        int[] kerning = null;
+        if (pairs != null)
         {
-            int l = glyphs[i];
-            int r = -1;
-            for (int k = i + 1; k < ng; ++k)
+            int ng = glyphs.length;
+            kerning = new int[ng];
+            for (int i = 0; i < ng; ++i)
             {
-                int g = glyphs[k];
-                if (g >= 0)
+                int l = glyphs[i];
+                int r = -1;
+                for (int k = i + 1; k < ng; ++k)
                 {
-                    r = g;
-                    break;
+                    int g = glyphs[k];
+                    if (g >= 0)
+                    {
+                        r = g;
+                        break;
+                    }
                 }
+                kerning[i] = getKerning(l, r);
             }
-            kerning[i] = getKerning(l, r);
+        }
+        else
+        {
+            LOG.warn("No kerning subtable data available due to an unsupported kerning subtable version");
         }
         return kerning;
     }
 
+    /**
+     * Obtain kerning adjustment for glyph pair {L,R}.
+     *
+     * @param l left member of glyph pair
+     * @param r right member of glyph pair
+     * @return a (possibly zero) kerning adjustment
+     */
     public int getKerning(int l, int r)
     {
+        if (pairs == null)
+        {
+            LOG.warn("No kerning subtable data available due to an unsupported kerning subtable version");
+            return 0;
+        }
         return pairs.getKerning(l, r);
     }
 
-    private void readSubtable0(TrueTypeFont ttf, TTFDataStream data) throws IOException
+    private void readSubtable0(TTFDataStream data) throws IOException
     {
         int version = data.readUnsignedShort();
         if (version != 0)
@@ -159,34 +206,33 @@ public class KerningSubtable extends TTFTable
             this.crossStream = true;
         }
         int format = getBits(coverage, COVERAGE_FORMAT, COVERAGE_FORMAT_SHIFT);
-        if ((format != 0) && (format != 2))
-        {
-            throw new UnsupportedOperationException("Unsupported kerning sub-table format: "
-                    + format);
-        }
         if (format == 0)
         {
-            readSubtable0Format0(ttf, data);
+            readSubtable0Format0(data);
         }
         else if (format == 2)
         {
-            readSubtable0Format2(ttf, data);
+            readSubtable0Format2(data);
+        }
+        else
+        {
+            LOG.debug("Skipped kerning subtable due to an unsupported kerning subtable version: " + format);
         }
     }
 
-    private void readSubtable0Format0(TrueTypeFont ttf, TTFDataStream data) throws IOException
+    private void readSubtable0Format0(TTFDataStream data) throws IOException
     {
         pairs = new PairData0Format0();
         pairs.read(data);
     }
 
-    private void readSubtable0Format2(TrueTypeFont ttf, TTFDataStream data) throws IOException
+    private void readSubtable0Format2(TTFDataStream data) throws IOException
     {
         throw new UnsupportedOperationException(
                 "Kerning table version 0 format 2 not yet supported.");
     }
 
-    private void readSubtable1(TrueTypeFont ttf, TTFDataStream data) throws IOException
+    private void readSubtable1(TTFDataStream data) throws IOException
     {
         throw new UnsupportedOperationException(
                 "Kerning table version 1 formats not yet supported.");
@@ -202,14 +248,14 @@ public class KerningSubtable extends TTFTable
         return (bits & mask) >> shift;
     }
 
-    abstract static class PairData
+    private abstract static class PairData
     {
         public abstract void read(TTFDataStream data) throws IOException;
 
         public abstract int getKerning(int l, int r);
     }
 
-    static class PairData0Format0 extends PairData implements Comparator<int[]>
+    private static class PairData0Format0 extends PairData implements Comparator<int[]>
     {
         private int searchRange;
         private int[][] pairs;

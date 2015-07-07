@@ -27,6 +27,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationWidget;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAppearanceDictionary;
 
 /**
  * A button field represents an interactive control on the screen
@@ -116,7 +118,9 @@ public abstract class PDButton extends PDTerminalField
     }
     
     /**
-     * This will get the option values - the "Opt" entry.
+     * This will get the export values.
+     * 
+     * <p>The export values are defined in the field dictionaries /Opt key.</p>
      * 
      * <p>The option values are used to define the export values
      * for the field to 
@@ -129,9 +133,9 @@ public abstract class PDButton extends PDTerminalField
      * </ul>
      * </p>
      * 
-     * @return List containing all possible options. If there is no Opt entry an empty list will be returned.
+     * @return List containing all possible export values. If there is no Opt entry an empty list will be returned.
      */
-    public List<String> getOptions()
+    public List<String> getExportValues()
     {
         COSBase value = getInheritableAttribute(COSName.OPT);
         if (value instanceof COSString)
@@ -148,25 +152,38 @@ public abstract class PDButton extends PDTerminalField
     }
     
     /**
-     * This will set the options.
+     * This will set the export values.
      * 
-     * @see #getOptions()
-     * @param values List containing all possible options. Supplying null list will remove the Opt entry.
+     * @see #getExportValues()
+     * @param values List containing all possible export values. Supplying null or an empty list will remove the Opt entry.
      */
-    public void setOptions(List<String> values)
+    public void setExportValues(List<String> values)
     {
-        COSArray cosValues = null;
-        if (values != null)
+        COSArray cosValues;
+        if (values != null && !values.isEmpty())
         {
             cosValues = COSArrayList.convertStringListToCOSStringCOSArray(values);
+            dictionary.setItem(COSName.OPT, cosValues);
         }
-        dictionary.setItem(COSName.OPT, cosValues);
+        else
+        {
+            dictionary.removeItem(COSName.OPT);
+        }
     }
-
+    
     @Override
     void constructAppearances() throws IOException
     {
-        // TODO: implement appearance generation for buttons
-        throw new UnsupportedOperationException("not implemented");
-    }
+        for (PDAnnotationWidget widget : getWidgets())
+        {
+            PDAppearanceDictionary appearance = widget.getAppearance();
+            if (appearance == null || appearance.getNormalAppearance() == null)
+            {
+                // TODO: implement appearance generation for radio buttons
+                throw new UnsupportedOperationException("Appearance generation is not implemented yet, see PDFBOX-2849");
+            }
+        }
+    }  
+
+    
 }

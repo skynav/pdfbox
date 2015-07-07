@@ -51,15 +51,15 @@ public class PDPushButton extends PDButton
     {
         super(acroForm, field, parent);
     }
-    
+
     @Override
-    public List<String> getOptions()
+    public List<String> getExportValues()
     {
         return Collections.emptyList();
     }
     
     @Override
-    public void setOptions(List<String> values)
+    public void setExportValues(List<String> values)
     {
         if (values != null && !values.isEmpty())
         {

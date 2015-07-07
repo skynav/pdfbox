@@ -18,47 +18,70 @@ package org.apache.pdfbox.tools;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.FileDialog;
+import java.awt.Toolkit;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.event.ActionEvent;
-import java.awt.event.WindowAdapter;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FilenameFilter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JComponent;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.KeyStroke;
+import javax.swing.TransferHandler;
 import javax.swing.UIManager;
 import javax.swing.border.BevelBorder;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
-import org.apache.pdfbox.tools.gui.PDFTreeModel;
-import org.apache.pdfbox.tools.gui.PDFTreeCellRenderer;
-import org.apache.pdfbox.tools.gui.ArrayEntry;
-import org.apache.pdfbox.tools.gui.MapEntry;
-
-import org.apache.pdfbox.pdmodel.PDDocument;
-
+import javax.swing.filechooser.FileFilter;
+import javax.swing.tree.TreePath;
+import org.apache.pdfbox.cos.COSArray;
+import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSBoolean;
+import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSFloat;
 import org.apache.pdfbox.cos.COSInteger;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.cos.COSNull;
+import org.apache.pdfbox.cos.COSObject;
 import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.cos.COSString;
-
-import javax.swing.tree.TreeModel;
-import javax.swing.tree.TreePath;
-
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.InputStream;
-import java.io.IOException;
-import org.apache.pdfbox.tools.util.FileOpenSaveDialog;
-import org.apache.pdfbox.tools.pdfdebugger.ui.Tree;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.tools.gui.ArrayEntry;
+import org.apache.pdfbox.tools.gui.DocumentEntry;
+import org.apache.pdfbox.tools.gui.MapEntry;
+import org.apache.pdfbox.tools.gui.OSXAdapter;
+import org.apache.pdfbox.tools.gui.PDFTreeCellRenderer;
+import org.apache.pdfbox.tools.gui.PDFTreeModel;
+import org.apache.pdfbox.tools.gui.PageEntry;
+import org.apache.pdfbox.tools.pdfdebugger.colorpane.CSArrayBased;
+import org.apache.pdfbox.tools.pdfdebugger.colorpane.CSDeviceN;
+import org.apache.pdfbox.tools.pdfdebugger.colorpane.CSIndexed;
+import org.apache.pdfbox.tools.pdfdebugger.colorpane.CSSeparation;
+import org.apache.pdfbox.tools.pdfdebugger.flagbitspane.FlagBitsPane;
+import org.apache.pdfbox.tools.pdfdebugger.pagepane.PagePane;
 import org.apache.pdfbox.tools.pdfdebugger.treestatus.TreeStatus;
 import org.apache.pdfbox.tools.pdfdebugger.treestatus.TreeStatusPane;
+import org.apache.pdfbox.tools.pdfdebugger.ui.Tree;
+import org.apache.pdfbox.tools.util.FileOpenSaveDialog;
 import org.apache.pdfbox.tools.util.RecentFiles;
 
 /**
@@ -69,14 +92,26 @@ import org.apache.pdfbox.tools.util.RecentFiles;
 public class PDFDebugger extends javax.swing.JFrame
 {
     private TreeStatusPane statusPane;
-
-    private PDDocument document = null;
-    private String currentFilePath = null;
-
     private RecentFiles recentFiles;
+    private boolean isPageMode;
+
+    private PDDocument document;
+    private String currentFilePath;
+
+    private static final Set<COSName> SPECIALCOLORSPACES =
+            new HashSet(Arrays.asList(COSName.INDEXED, COSName.SEPARATION, COSName.DEVICEN));
+
+    private static final Set<COSName> OTHERCOLORSPACES =
+            new HashSet(Arrays.asList(COSName.ICCBASED, COSName.PATTERN, COSName.CALGRAY, COSName.CALRGB, COSName.LAB));
 
     private static final String PASSWORD = "-password";
 
+    private static final int SHORCUT_KEY_MASK =
+            Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
+    
+    private static final String OS_NAME = System.getProperty("os.name").toLowerCase();
+    private static final boolean IS_MAC_OS = OS_NAME.startsWith("mac os x");
+    
     /**
      * Constructor.
      */
@@ -110,6 +145,8 @@ public class PDFDebugger extends javax.swing.JFrame
         copyMenuItem = new JMenuItem();
         pasteMenuItem = new JMenuItem();
         deleteMenuItem = new JMenuItem();
+        viewMenu = new JMenu();
+        viewModeItem = new JMenuItem();
         helpMenu = new JMenu();
         contentsMenuItem = new JMenuItem();
         aboutMenuItem = new JMenuItem();
@@ -117,28 +154,24 @@ public class PDFDebugger extends javax.swing.JFrame
         tree.setCellRenderer( new PDFTreeCellRenderer() );
         tree.setModel( null );
 
-        setTitle("PDFBox - PDF Debugger");
-
-        addWindowFocusListener(new WindowAdapter()
-        {
-            @Override
-            public void windowGainedFocus(WindowEvent e)
-            {
-                jScrollPane1.requestFocusInWindow();
-                super.windowGainedFocus(e);
-            }
-        });
+        setTitle("PDFBox Debugger");
 
         addWindowListener(new java.awt.event.WindowAdapter()
         {
+            @Override
+            public void windowOpened(WindowEvent windowEvent)
+            {
+                tree.requestFocusInWindow();
+                super.windowOpened(windowEvent);
+            }
+            
             @Override
             public void windowClosing(WindowEvent evt)
             {
                 exitForm(evt);
             }
         });
-
-
+        
         jScrollPane1.setBorder(new BevelBorder(BevelBorder.RAISED));
         jScrollPane1.setPreferredSize(new Dimension(300, 500));
         tree.addTreeSelectionListener(new TreeSelectionListener()
@@ -153,7 +186,8 @@ public class PDFDebugger extends javax.swing.JFrame
         jScrollPane1.setViewportView(tree);
 
         jSplitPane1.setRightComponent(jScrollPane2);
-
+        jSplitPane1.setDividerSize(3);
+        
         jScrollPane2.setPreferredSize(new Dimension(300, 500));
         jScrollPane2.setViewportView(jTextPane1);
 
@@ -170,9 +204,9 @@ public class PDFDebugger extends javax.swing.JFrame
         getContentPane().add( jSplitPane1, BorderLayout.CENTER );
 
         fileMenu.setText("File");
-        openMenuItem.setText("Open");
-        openMenuItem.setToolTipText("Open PDF file");
-        openMenuItem.addActionListener(new java.awt.event.ActionListener()
+        openMenuItem.setText("Open...");
+        openMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, SHORCUT_KEY_MASK));
+        openMenuItem.addActionListener(new ActionListener()
         {
             @Override
             public void actionPerformed(ActionEvent evt)
@@ -196,13 +230,14 @@ public class PDFDebugger extends javax.swing.JFrame
             throw new RuntimeException(e);
         }
 
-        recentFilesMenu.setText("Open recent Files");
+        recentFilesMenu.setText("Open Recent");
         recentFilesMenu.setEnabled(false);
         addRecentFileItems();
         fileMenu.add(recentFilesMenu);
 
         exitMenuItem.setText("Exit");
-        exitMenuItem.addActionListener(new java.awt.event.ActionListener()
+        exitMenuItem.setAccelerator(KeyStroke.getKeyStroke("alt F4"));
+        exitMenuItem.addActionListener(new ActionListener()
         {
             @Override
             public void actionPerformed(ActionEvent evt)
@@ -211,7 +246,10 @@ public class PDFDebugger extends javax.swing.JFrame
             }
         });
 
-        fileMenu.add(exitMenuItem);
+        if (!IS_MAC_OS)
+        {
+            fileMenu.add(exitMenuItem);
+        }
 
         menuBar.add(fileMenu);
 
@@ -228,6 +266,32 @@ public class PDFDebugger extends javax.swing.JFrame
         deleteMenuItem.setText("Delete");
         editMenu.add(deleteMenuItem);
 
+        viewMenu.setText("View");
+
+        viewModeItem.setText("Show Pages");
+        viewModeItem.addActionListener(new ActionListener()
+        {
+            @Override
+            public void actionPerformed(ActionEvent actionEvent)
+            {
+                if (isPageMode)
+                {
+                    viewModeItem.setText("Show Pages");
+                    isPageMode = false;
+                }
+                else
+                {
+                    viewModeItem.setText("Show Internal Structure");
+                    isPageMode = true;
+                }
+                initTree();
+            }
+        });
+
+        viewMenu.add(viewModeItem);
+
+        menuBar.add(viewMenu);
+
         helpMenu.setText("Help");
         contentsMenuItem.setText("Contents");
         helpMenu.add(contentsMenuItem);
@@ -237,24 +301,123 @@ public class PDFDebugger extends javax.swing.JFrame
 
         setJMenuBar(menuBar);
 
-        Dimension screenSize = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         setBounds((screenSize.width-700)/2, (screenSize.height-600)/2, 700, 600);
+
+        // drag and drop to open files
+        setTransferHandler(new TransferHandler()
+        {
+            @Override
+            public boolean canImport(TransferSupport transferSupport)
+            {
+                if (!transferSupport.isDataFlavorSupported(DataFlavor.javaFileListFlavor))
+                {
+                    return false;
+                }
+                return true;
+            }
+
+            @Override
+            @SuppressWarnings("unchecked")
+            public boolean importData(TransferSupport transferSupport)
+            {
+                try
+                {
+                    Transferable transferable = transferSupport.getTransferable();
+                    List<File> files = (List<File>) transferable.getTransferData(
+                            DataFlavor.javaFileListFlavor);
+                    readPDFFile(files.get(0), "");
+                    return true;
+                }
+                catch (IOException e)
+                {
+                    throw new RuntimeException(e);
+                }
+                catch (UnsupportedFlavorException e)
+                {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+
+        // Mac OS X file open/quit handler
+        if (IS_MAC_OS)
+        {
+            try
+            {
+                Method osxOpenFiles = getClass().getDeclaredMethod("osxOpenFiles", String.class);
+                osxOpenFiles.setAccessible(true);
+                OSXAdapter.setFileHandler(this, osxOpenFiles);
+
+                Method osxQuit = getClass().getDeclaredMethod("osxQuit");
+                osxQuit.setAccessible(true);
+                OSXAdapter.setQuitHandler(this, osxQuit);
+            }
+            catch (NoSuchMethodException e)
+            {
+                throw new RuntimeException(e);
+            }
+        }
     }//GEN-END:initComponents
+
+    /**
+     * This method is called via reflection on Mac OS X.
+     */
+    private void osxOpenFiles(String filename)
+    {
+        try
+        {
+            readPDFFile(filename, "");
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * This method is called via reflection on Mac OS X.
+     */
+    private void osxQuit()
+    {
+        exitMenuItemActionPerformed(null);
+    }
 
     private void openMenuItemActionPerformed(ActionEvent evt)
     {
-        ExtensionFileFilter pdfFilter = new ExtensionFileFilter(new String[] {"pdf", "PDF"}, "PDF Files");
-        FileOpenSaveDialog openDialog = new FileOpenSaveDialog(this, pdfFilter);
         try
         {
-            File file = openDialog.openFile();
-            if (file != null)
+            if (IS_MAC_OS)
             {
-                String name = file.getPath();
-                readPDFFile(name, "");
+                FileDialog openDialog = new FileDialog(this, "Open");
+                openDialog.setFilenameFilter(new FilenameFilter()
+                {
+                    @Override
+                    public boolean accept(File file, String s)
+                    {
+                        return file.getName().toLowerCase().endsWith(".pdf");
+                    }
+                });
+                openDialog.setVisible(true);
+                if (openDialog.getFile() != null)
+                {
+                    readPDFFile(openDialog.getFile(), "");
+                }
+            }
+            else
+            {
+                String[] extensions = new String[] {"pdf", "PDF"};
+                FileFilter pdfFilter = new ExtensionFileFilter(extensions, "PDF Files (*.pdf)");
+                FileOpenSaveDialog openDialog = new FileOpenSaveDialog(this, pdfFilter);
+
+                File file = openDialog.openFile();
+                if (file != null)
+                {
+                    readPDFFile(file, "");
+                }
             }
         }
-        catch (Exception e)
+        catch (IOException e)
         {
             throw new RuntimeException(e);
         }
@@ -268,22 +431,193 @@ public class PDFDebugger extends javax.swing.JFrame
             try
             {
                 Object selectedNode = path.getLastPathComponent();
-                String data=convertToString(selectedNode);
+                if (isSpecialColorSpace(selectedNode) || isOtherColorSpace(selectedNode))
+                {
+                    showColorPane(selectedNode);
+                    return;
+                }
+                if (isPage(selectedNode))
+                {
+                    showPage(selectedNode);
+                    return;
+                }
+                if (isFlagNode(selectedNode))
+                {
+                    Object parentNode = path.getParentPath().getLastPathComponent();
+                    showFlagPane(parentNode, selectedNode);
+                    return;
+                }
+                if (!jSplitPane1.getRightComponent().equals(jScrollPane2))
+                {
+                    jSplitPane1.setRightComponent(jScrollPane2);
+                }
+                String data = convertToString(selectedNode);
                 if (data != null)
                 {
                     jTextPane1.setText(data);
                 }
                 else
                 {
-                    jTextPane1.setText( "" );
+                    jTextPane1.setText("");
                 }
             }
             catch (Exception e)
             {
+                e.printStackTrace();
                 throw new RuntimeException(e);
             }
         }
     }//GEN-LAST:event_jTree1ValueChanged
+
+    private boolean isSpecialColorSpace(Object selectedNode)
+    {
+        selectedNode = getUnderneathObject(selectedNode);
+
+        if (selectedNode instanceof COSArray && ((COSArray) selectedNode).size() > 0)
+        {
+            COSBase arrayEntry = ((COSArray)selectedNode).get(0);
+            if (arrayEntry instanceof COSName)
+            {
+                COSName name = (COSName) arrayEntry;
+                return SPECIALCOLORSPACES.contains(name);
+            }
+        }
+        return false;
+    }
+
+    private boolean isOtherColorSpace(Object selectedNode)
+    {
+        selectedNode = getUnderneathObject(selectedNode);
+
+        if (selectedNode instanceof COSArray && ((COSArray) selectedNode).size() > 0)
+        {
+            COSBase arrayEntry = ((COSArray)selectedNode).get(0);
+            if (arrayEntry instanceof COSName)
+            {
+                COSName name = (COSName) arrayEntry;
+                return OTHERCOLORSPACES.contains(name);
+            }
+        }
+        return false;
+    }
+
+    private boolean isPage(Object selectedNode)
+    {
+        selectedNode = getUnderneathObject(selectedNode);
+
+        if (selectedNode instanceof COSDictionary)
+        {
+            COSDictionary dict = (COSDictionary) selectedNode;
+            COSBase typeItem = dict.getItem(COSName.TYPE);
+            if (COSName.PAGE.equals(typeItem))
+            {
+                return true;
+            }
+        }
+        else if (selectedNode instanceof PageEntry)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isFlagNode(Object selectedNode)
+    {
+        if (selectedNode instanceof MapEntry)
+        {
+            Object key = ((MapEntry)selectedNode).getKey();
+            return COSName.FLAGS.equals(key) || COSName.F.equals(key) || COSName.FF.equals(key)
+                    || COSName.PANOSE.equals(key);
+        }
+        return false;
+    }
+
+    /**
+     * Show a Panel describing color spaces in more detail and interactive way.
+     * @param csNode the special color space containing node.
+     */
+    private void showColorPane(Object csNode)
+    {
+        csNode = getUnderneathObject(csNode);
+
+        if (csNode instanceof COSArray && ((COSArray) csNode).size() > 0)
+        {
+            COSArray array = (COSArray)csNode;
+            COSBase arrayEntry = array.get(0);
+            if (arrayEntry instanceof COSName)
+            {
+                COSName csName = (COSName) arrayEntry;
+                if (csName.equals(COSName.SEPARATION))
+                {
+                    jSplitPane1.setRightComponent(new CSSeparation(array).getPanel());
+                }
+                else if (csName.equals(COSName.DEVICEN))
+                {
+                    jSplitPane1.setRightComponent(new CSDeviceN(array).getPanel());
+                }
+                else if (csName.equals(COSName.INDEXED))
+                {
+                    jSplitPane1.setRightComponent(new CSIndexed(array).getPanel());
+                }
+                else if (OTHERCOLORSPACES.contains(csName))
+                {
+                    jSplitPane1.setRightComponent(new CSArrayBased(array).getPanel());
+                }
+            }
+        }
+    }
+
+    private void showPage(Object selectedNode)
+    {
+        selectedNode = getUnderneathObject(selectedNode);
+
+        COSDictionary page;
+        if (selectedNode instanceof COSDictionary)
+        {
+            page = (COSDictionary) selectedNode;
+        }
+        else
+        {
+            page = ((PageEntry) selectedNode).getDict();
+        }
+
+        COSBase typeItem = page.getItem(COSName.TYPE);
+        if (COSName.PAGE.equals(typeItem))
+        {
+            PagePane pagePane = new PagePane(document, page);
+            jSplitPane1.setRightComponent(new JScrollPane(pagePane.getPanel()));
+        }
+    }
+
+    private void showFlagPane(Object parentNode, Object selectedNode)
+    {
+        parentNode = getUnderneathObject(parentNode);
+        if (parentNode instanceof COSDictionary)
+        {
+            selectedNode = ((MapEntry)selectedNode).getKey();
+            selectedNode = getUnderneathObject(selectedNode);
+            FlagBitsPane flagBitsPane = new FlagBitsPane((COSDictionary) parentNode, (COSName) selectedNode);
+            jSplitPane1.setRightComponent(flagBitsPane.getPane());
+        }
+    }
+
+    private Object getUnderneathObject(Object selectedNode)
+    {
+        if (selectedNode instanceof MapEntry)
+        {
+            selectedNode = ((MapEntry) selectedNode).getValue();
+        }
+        else if (selectedNode instanceof ArrayEntry)
+        {
+            selectedNode = ((ArrayEntry) selectedNode).getValue();
+        }
+
+        if (selectedNode instanceof COSObject)
+        {
+            selectedNode = ((COSObject) selectedNode).getObject();
+        }
+        return selectedNode;
+    }
 
     private String convertToString( Object selectedNode )
     {
@@ -310,7 +644,17 @@ public class PDFDebugger extends javax.swing.JFrame
         }
         else if( selectedNode instanceof COSString )
         {
-            data = "" + ((COSString)selectedNode).getString();
+            String text = ((COSString) selectedNode).getString();
+            // display unprintable strings as hex
+            for (char c : text.toCharArray())
+            {
+                if (Character.isISOControl(c))
+                {
+                    text = "<" + ((COSString) selectedNode).toHexString() + ">";
+                    break;
+                }
+            }
+            data = "" + text;
         }
         else if( selectedNode instanceof COSStream )
         {
@@ -364,7 +708,7 @@ public class PDFDebugger extends javax.swing.JFrame
     /**
      * Exit the Application.
      */
-    private void exitForm(java.awt.event.WindowEvent evt)
+    private void exitForm(WindowEvent evt)
     {
         if( document != null )
         {
@@ -383,16 +727,42 @@ public class PDFDebugger extends javax.swing.JFrame
     }
 
     /**
+     * Entry point.
+     * 
      * @param args the command line arguments
-     *
      * @throws Exception If anything goes wrong.
      */
     public static void main(String[] args) throws Exception
     {
         UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        PDFDebugger viewer = new PDFDebugger();
+        System.setProperty("apple.laf.useScreenMenuBar", "true");
+
+        // handle uncaught exceptions
+        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler()
+        {
+            @Override
+            public void uncaughtException(Thread thread, Throwable throwable)
+            {
+                StringBuilder sb = new StringBuilder();
+                sb.append(throwable.toString());
+                for (StackTraceElement element : throwable.getStackTrace())
+                {
+                    sb.append('\n');
+                    sb.append(element);
+                }
+                JOptionPane.showMessageDialog(null, "Error: " + sb.toString(),"Error",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        
+        final PDFDebugger viewer = new PDFDebugger();
+
+        
+        
+        // open file, if any
         String filename = null;
         String password = "";
+        
         for( int i = 0; i < args.length; i++ )
         {
             if( args[i].equals( PASSWORD ) )
@@ -409,33 +779,68 @@ public class PDFDebugger extends javax.swing.JFrame
                 filename = args[i];
             }
         }
-
+        
         if (filename != null)
         {
-            viewer.readPDFFile( filename, password );
+            File file = new File(filename);
+            if (file.exists())
+            {
+                viewer.readPDFFile( filename, password );
+            }
         }
         viewer.setVisible(true);
     }
 
-    private void readPDFFile(String filePath, String password) throws Exception
+    private void readPDFFile(String filePath, String password) throws IOException
+    {
+        File file = new File(filePath);
+        readPDFFile(file, password);
+    }
+    
+    private void readPDFFile(File file, String password) throws IOException
     {
         if( document != null )
         {
             document.close();
             recentFiles.addFile(currentFilePath);
         }
-        File file = new File( filePath );
         currentFilePath = file.getPath();
         recentFiles.removeFile(file.getPath());
         parseDocument( file, password );
-        TreeStatus treeStatus = new TreeStatus(document.getDocument().getTrailer());
-        statusPane.updateTreeStatus(treeStatus);
-        TreeModel model=new PDFTreeModel(document);
-        tree.setModel(model);
-        tree.setSelectionPath(treeStatus.getPathForString("Root"));
-        setTitle("PDFBox - " + file.getAbsolutePath());
+        
+        initTree();
+        
+        if (IS_MAC_OS)
+        {
+            setTitle(file.getName());
+            getRootPane().putClientProperty("Window.documentFile", file);
+        }
+        else
+        {
+            setTitle("PDF Debugger - " + file.getAbsolutePath());
+        }
         addRecentFileItems();
     }
+    
+    private void initTree()
+    {
+        TreeStatus treeStatus = new TreeStatus(document.getDocument().getTrailer());
+        statusPane.updateTreeStatus(treeStatus);
+        
+        if (isPageMode)
+        {
+            File file = new File(currentFilePath);
+            DocumentEntry documentEntry = new DocumentEntry(document, file.getName());
+            tree.setModel(new PDFTreeModel(documentEntry));
+            tree.setSelectionPath(treeStatus.getPathForString("Root/Pages/Kids/[0]"));
+        }
+        else
+        {
+            tree.setModel(new PDFTreeModel(document));
+            tree.setSelectionPath(treeStatus.getPathForString("Root"));
+        }
+    }
+    
     /**
      * This will parse a document.
      *
@@ -492,9 +897,9 @@ public class PDFDebugger extends javax.swing.JFrame
     {
         System.err.println(
                 "usage: java -jar pdfbox-app-x.y.z.jar PDFDebugger [OPTIONS] <input-file>\n" +
-                "  -password <password>      Password to decrypt the document\n" +
-                "  <input-file>              The PDF document to be loaded\n"
-                );
+                        "  -password <password>      Password to decrypt the document\n" +
+                        "  <input-file>              The PDF document to be loaded\n"
+        );
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -508,6 +913,8 @@ public class PDFDebugger extends javax.swing.JFrame
     private JMenu fileMenu;
     private JMenu helpMenu;
     private JMenu recentFilesMenu;
+    private JMenu viewMenu;
+    private JMenuItem viewModeItem;
     private JScrollPane jScrollPane1;
     private JScrollPane jScrollPane2;
     private javax.swing.JSplitPane jSplitPane1;
