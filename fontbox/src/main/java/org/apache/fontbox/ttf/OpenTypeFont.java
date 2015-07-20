@@ -20,6 +20,10 @@ package org.apache.fontbox.ttf;
 import java.awt.geom.GeneralPath;
 import java.io.IOException;
 
+import org.apache.fontbox.ttf.advanced.GlyphDefinitionTable;
+import org.apache.fontbox.ttf.advanced.GlyphSubstitutionTable;
+import org.apache.fontbox.ttf.advanced.GlyphPositioningTable;
+
 /**
  * An OpenType (OTF/TTF) font.
  */
@@ -99,4 +103,50 @@ public class OpenTypeFont extends TrueTypeFont
                tables.containsKey("GSUB") ||
                tables.containsKey("JSTF");
     }
+
+    /**
+     * Get the "GDEF" table for this OTF.
+     *
+     * @return The "GDEF" table.
+     */
+    public synchronized GlyphDefinitionTable getGDEF() throws IOException
+    {
+        GlyphDefinitionTable gdef = (GlyphDefinitionTable)tables.get(GlyphDefinitionTable.TAG);
+        if (gdef != null && !gdef.getInitialized())
+        {
+            readTable(gdef);
+        }
+        return gdef;
+    }
+
+    /**
+     * Get the "GSUB" table for this OTF.
+     *
+     * @return The "GSUB" table.
+     */
+    public synchronized GlyphSubstitutionTable getGSUB() throws IOException
+    {
+        GlyphSubstitutionTable gsub = (GlyphSubstitutionTable)tables.get(GlyphSubstitutionTable.TAG);
+        if (gsub != null && !gsub.getInitialized())
+        {
+            readTable(gsub);
+        }
+        return gsub;
+    }
+
+    /**
+     * Get the "GPOS" table for this OTF.
+     *
+     * @return The "GPOS" table.
+     */
+    public synchronized GlyphPositioningTable getGPOS() throws IOException
+    {
+        GlyphPositioningTable gpos = (GlyphPositioningTable)tables.get(GlyphPositioningTable.TAG);
+        if (gpos != null && !gpos.getInitialized())
+        {
+            readTable(gpos);
+        }
+        return gpos;
+    }
+
 }

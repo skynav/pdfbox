@@ -21,6 +21,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 
+import org.apache.fontbox.ttf.advanced.GlyphDefinitionTable;
+import org.apache.fontbox.ttf.advanced.GlyphSubstitutionTable;
+import org.apache.fontbox.ttf.advanced.GlyphPositioningTable;
+
 /**
  * OpenType font file parser.
  */
@@ -88,16 +92,26 @@ public final class OTFParser extends TTFParser
     @Override
     protected TTFTable readTable(TrueTypeFont font, String tag)
     {
-        // todo: this is a stub, a full implementation is needed
-
-        if (tag.equals("BASE") || tag.equals("GDEF") || tag.equals("GPOS") ||
-            tag.equals("GSUB") || tag.equals("JSTF"))
+        assert font instanceof OpenTypeFont;
+        if (tag.equals("BASE") || tag.equals("JSTF"))
         {
             return new OTLTable(font);
         }
         else if (tag.equals("CFF "))
         {
             return new CFFTable(font);
+        }
+        else if (tag.equals(GlyphDefinitionTable.TAG))
+        {
+            return new GlyphDefinitionTable((OpenTypeFont) font);
+        }
+        else if (tag.equals(GlyphSubstitutionTable.TAG))
+        {
+            return new GlyphSubstitutionTable((OpenTypeFont) font);
+        }
+        else if (tag.equals(GlyphPositioningTable.TAG))
+        {
+            return new GlyphPositioningTable((OpenTypeFont) font);
         }
         else
         {

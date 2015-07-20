@@ -428,6 +428,26 @@ public class TrueTypeFont implements FontBoxFont, Closeable
     }
 
     /**
+     * Convert from truetype units to pdf units based on the
+     * unitsPerEm field in the "head" table
+     * @param  ttfUnits truetype units
+     * @return pdf units
+     */
+    public int convertTTFUnit2PDFUnit(int ttfUnits) throws IOException {
+        int pdfUnits;
+        int upem = getUnitsPerEm();
+        if (ttfUnits < 0) {
+            long rest1 = ttfUnits % upem;
+            long storrest = 1000 * rest1;
+            long ledd2 = (storrest != 0 ? rest1 / storrest : 0);
+            pdfUnits = -((-1000 * ttfUnits) / upem - (int) ledd2);
+        } else {
+            pdfUnits = (ttfUnits / upem) * 1000 + ((ttfUnits % upem) * 1000) / upem;
+        }
+        return pdfUnits;
+    }
+
+    /**
      * Returns the width for the given GID.
      * 
      * @param gid the GID
@@ -449,6 +469,16 @@ public class TrueTypeFont implements FontBoxFont, Closeable
     }
 
     /**
+     * Returns array of advance widths.
+     * @return array of advance widths
+     */
+    public int[] getAdvanceWidths() throws IOException
+    {
+        HorizontalMetricsTable hmtx = getHorizontalMetrics();
+        return (hmtx != null) ? hmtx.getAdvanceWidths() : null;
+    }
+
+    /**
      * Returns the height for the given GID.
      * 
      * @param gid the GID
@@ -467,6 +497,16 @@ public class TrueTypeFont implements FontBoxFont, Closeable
             // this should never happen
             return 250;
         }
+    }
+
+    /**
+     * Returns array of advance heights.
+     * @return array of advance heights
+     */
+    public int[] getAdvanceHeights() throws IOException
+    {
+        VerticalMetricsTable vmtx = getVerticalMetrics();
+        return (vmtx != null) ? vmtx.getAdvanceHeights() : null;
     }
 
     @Override

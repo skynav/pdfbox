@@ -112,4 +112,13 @@ public class VerticalMetricsTable extends TTFTable
             return advanceHeight[advanceHeight.length -1];
         }
     }
+
+    /**
+     * Returns array of advance heights.
+     * @return array of advance heights
+     */
+    public int[] getAdvanceHeights()
+    {
+        return advanceHeight;
+    }
 }

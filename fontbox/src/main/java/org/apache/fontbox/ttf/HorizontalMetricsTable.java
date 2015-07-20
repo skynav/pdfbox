@@ -105,4 +105,13 @@ public class HorizontalMetricsTable extends TTFTable
             return advanceWidth[advanceWidth.length -1];
         }
     }
+
+    /**
+     * Returns array of advance widths.
+     * @return array of advance widths
+     */
+    public int[] getAdvanceWidths()
+    {
+        return advanceWidth;
+    }
 }
