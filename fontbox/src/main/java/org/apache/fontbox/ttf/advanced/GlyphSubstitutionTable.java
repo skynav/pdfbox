@@ -111,14 +111,15 @@ public class GlyphSubstitutionTable extends AdvancedTypographicTable {
      * @param gs an input glyph sequence
      * @param script a script identifier
      * @param language a language identifier
+     * @param features parameterized features
      * @return the substituted (output) glyph sequence
      */
-    public GlyphSequence substitute(GlyphSequence gs, String script, String language) {
+    public GlyphSequence substitute(GlyphSequence gs, String script, String language, Object[][] features) {
         GlyphSequence ogs;
         Map/*<LookupSpec,List<LookupTable>>*/ lookups = matchLookups(script, language, "*");
         if ((lookups != null) && (lookups.size() > 0)) {
             ScriptProcessor sp = ScriptProcessor.getInstance(script);
-            ogs = sp.substitute(this, gs, script, language, lookups);
+            ogs = sp.substitute(this, gs, script, language, features, lookups);
         } else {
             ogs = gs;
         }

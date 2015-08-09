@@ -121,7 +121,7 @@ public class ArabicScriptProcessor extends DefaultScriptProcessor {
     }
 
     /** {@inheritDoc} */
-    public String[] getSubstitutionFeatures() {
+    public String[] getSubstitutionFeatures(Object[][] features) {
         return GSUB_FEATURES;
     }
 
@@ -131,7 +131,7 @@ public class ArabicScriptProcessor extends DefaultScriptProcessor {
     }
 
     /** {@inheritDoc} */
-    public String[] getPositioningFeatures() {
+    public String[] getPositioningFeatures(Object[][] features) {
         return GPOS_FEATURES;
     }
 
@@ -142,7 +142,8 @@ public class ArabicScriptProcessor extends DefaultScriptProcessor {
 
     /** {@inheritDoc} */
     @Override
-    public GlyphSequence reorderCombiningMarks(GlyphDefinitionTable gdef, GlyphSequence gs, int[] widths, int[][] gpa, String script, String language) {
+    public GlyphSequence
+        reorderCombiningMarks(GlyphDefinitionTable gdef, GlyphSequence gs, int[] widths, int[][] gpa, String script, String language, Object[][] features) {
         // a side effect of BIDI reordering is to order combining marks before their base, so we need to override the default here to
         // prevent double reordering
         return gs;

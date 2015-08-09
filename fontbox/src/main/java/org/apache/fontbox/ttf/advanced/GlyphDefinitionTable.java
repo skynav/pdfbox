@@ -120,9 +120,9 @@ public class GlyphDefinitionTable extends AdvancedTypographicTable {
      * @param language a language identifier
      * @return the reordered (output) glyph sequence
      */
-    public GlyphSequence reorderCombiningMarks(GlyphSequence gs, int[] widths, int[][] gpa, String script, String language) {
+    public GlyphSequence reorderCombiningMarks(GlyphSequence gs, int[] widths, int[][] gpa, String script, String language, Object[][] features) {
         ScriptProcessor sp = ScriptProcessor.getInstance(script);
-        return sp.reorderCombiningMarks(this, gs, widths, gpa, script, language);
+        return sp.reorderCombiningMarks(this, gs, widths, gpa, script, language, features);
     }
 
     /** {@inheritDoc} */

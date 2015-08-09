@@ -145,7 +145,7 @@ public class IndicScriptProcessor extends DefaultScriptProcessor {
     }
 
     /** {@inheritDoc} */
-    public String[] getSubstitutionFeatures() {
+    public String[] getSubstitutionFeatures(Object[][] features) {
         return GSUB_REQ_FEATURES;
     }
 
@@ -160,7 +160,7 @@ public class IndicScriptProcessor extends DefaultScriptProcessor {
     }
 
     /** {@inheritDoc} */
-    public String[] getPositioningFeatures() {
+    public String[] getPositioningFeatures(Object[][] features) {
         return GPOS_REQ_FEATURES;
     }
 

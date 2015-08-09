@@ -70,7 +70,7 @@ public abstract class ScriptProcessor {
      * Obtain script specific required substitution features.
      * @return array of suppported substitution features or null
      */
-    public abstract String[] getSubstitutionFeatures();
+    public abstract String[] getSubstitutionFeatures(Object[][] features);
 
     /**
      * Obtain script specific optional substitution features.
@@ -95,8 +95,9 @@ public abstract class ScriptProcessor {
      * @param lookups a mapping from lookup specifications to glyph subtables to use for substitution processing
      * @return the substituted (output) glyph sequence
      */
-    public final GlyphSequence substitute(GlyphSubstitutionTable gsub, GlyphSequence gs, String script, String language, Map/*<LookupSpec,List<LookupTable>>>*/ lookups) {
-        return substitute(gs, script, language, assembleLookups(gsub, getSubstitutionFeatures(), lookups), getSubstitutionContextTester());
+    public final GlyphSequence
+        substitute(GlyphSubstitutionTable gsub, GlyphSequence gs, String script, String language, Object[][] features, Map/*<LookupSpec,List<LookupTable>>>*/ lookups) {
+        return substitute(gs, script, language, assembleLookups(gsub, getSubstitutionFeatures(features), lookups), getSubstitutionContextTester());
     }
 
     /**
@@ -130,15 +131,17 @@ public abstract class ScriptProcessor {
      * @param language a language identifier
      * @return the reordered (output) glyph sequence
      */
-    public GlyphSequence reorderCombiningMarks(GlyphDefinitionTable gdef, GlyphSequence gs, int[] unscaledWidths, int[][] gpa, String script, String language) {
+    public GlyphSequence
+        reorderCombiningMarks(GlyphDefinitionTable gdef, GlyphSequence gs, int[] unscaledWidths, int[][] gpa, String script, String language, Object[][] features) {
         return gs;
     }
 
     /**
      * Obtain script specific required positioning features.
+     * @param features
      * @return array of suppported positioning features or null
      */
-    public abstract String[] getPositioningFeatures();
+    public abstract String[] getPositioningFeatures(Object[][] features);
 
     /**
      * Obtain script specific optional positioning features.
@@ -167,8 +170,8 @@ public abstract class ScriptProcessor {
      * with one 4-tuple for each element of glyph sequence
      * @return true if some adjustment is not zero; otherwise, false
      */
-    public final boolean position(GlyphPositioningTable gpos, GlyphSequence gs, String script, String language, int fontSize, Map/*<LookupSpec,List<LookupTable>>*/ lookups, int[] widths, int[][] adjustments) {
-        return position(gs, script, language, fontSize, assembleLookups(gpos, getPositioningFeatures(), lookups), widths, adjustments, getPositioningContextTester());
+    public final boolean position(GlyphPositioningTable gpos, GlyphSequence gs, String script, String language, Object[][] features, int fontSize, Map/*<LookupSpec,List<LookupTable>>*/ lookups, int[] widths, int[][] adjustments) {
+        return position(gs, script, language, fontSize, assembleLookups(gpos, getPositioningFeatures(features), lookups), widths, adjustments, getPositioningContextTester());
     }
 
     /**

@@ -56,8 +56,11 @@ public class DefaultScriptProcessor extends ScriptProcessor {
 
     @Override
     /** {@inheritDoc} */
-    public String[] getSubstitutionFeatures() {
-        return GSUB_FEATURES;
+    public String[] getSubstitutionFeatures(Object[][] features) {
+        if ((features == null) || (features.length == 0))
+            return GSUB_FEATURES;
+        else
+            return augmentFeatures(GSUB_FEATURES, features);
     }
 
     @Override
@@ -68,8 +71,28 @@ public class DefaultScriptProcessor extends ScriptProcessor {
 
     @Override
     /** {@inheritDoc} */
-    public String[] getPositioningFeatures() {
-        return GPOS_FEATURES;
+    public String[] getPositioningFeatures(Object[][] features) {
+        if ((features == null) || (features.length == 0))
+            return GPOS_FEATURES;
+        else
+            return augmentFeatures(GPOS_FEATURES, features);
+    }
+
+    private String[] augmentFeatures(String[] features, Object[][] moreFeatures) {
+        assert features != null;
+        assert moreFeatures != null;
+        assert moreFeatures.length > 0;
+        int nf = features.length + moreFeatures.length;
+        String[] augmentedFeatures = new String[nf];
+        int k = 0;
+        for (int i = 0, n = features.length; i < n; ++i)
+            augmentedFeatures[k++] = features[i];
+        for (int i = 0, n = moreFeatures.length; i < n; ++i) {
+            Object mf = moreFeatures[i][0];
+            if (mf instanceof String)
+                augmentedFeatures[k++] = (String) mf;
+        }
+        return augmentedFeatures;
     }
 
     @Override
@@ -80,7 +103,8 @@ public class DefaultScriptProcessor extends ScriptProcessor {
 
     @Override
     /** {@inheritDoc} */
-    public GlyphSequence reorderCombiningMarks(GlyphDefinitionTable gdef, GlyphSequence gs, int[] unscaledWidths, int[][] gpa, String script, String language) {
+    public GlyphSequence
+        reorderCombiningMarks(GlyphDefinitionTable gdef, GlyphSequence gs, int[] unscaledWidths, int[][] gpa, String script, String language, Object[][] features) {
         int   ng  = gs.getGlyphCount();
         int[] ga  = gs.getGlyphArray(false);
         int   nm  = 0;
