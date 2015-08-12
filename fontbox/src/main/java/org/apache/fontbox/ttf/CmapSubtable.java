@@ -184,7 +184,8 @@ public class CmapSubtable
                     throw new IOException("CMap contains an invalid glyph index");
                 }
 
-                glyphIdToCharacterCode[(int) glyphIndex] = currentCharCode;
+                if (glyphIdToCharacterCode[(int) glyphIndex] == -1)
+                    glyphIdToCharacterCode[(int) glyphIndex] = currentCharCode;
                 characterCodeToGlyphId.put(currentCharCode, (int) glyphIndex);
             }
         }
@@ -256,9 +257,11 @@ public class CmapSubtable
                 if (firstCode + j > 0x10FFFF)
                 {
                     LOG.warn("Format 12 cmap contains character beyond UCS-4");
+                    continue;
                 }
 
-                glyphIdToCharacterCode[(int) glyphIndex] = (int) (firstCode + j);
+                if (glyphIdToCharacterCode[(int) glyphIndex] == -1)
+                    glyphIdToCharacterCode[(int) glyphIndex] = (int) (firstCode + j);
                 characterCodeToGlyphId.put((int) (firstCode + j), (int) glyphIndex);
             }
         }
@@ -309,7 +312,8 @@ public class CmapSubtable
                     LOG.warn("Format 13 cmap contains character beyond UCS-4");
                 }
 
-                glyphIdToCharacterCode[(int) glyphId] = (int) (firstCode + j);
+                if (glyphIdToCharacterCode[(int) glyphId] == -1)
+                    glyphIdToCharacterCode[(int) glyphId] = (int) (firstCode + j);
                 characterCodeToGlyphId.put((int) (firstCode + j), (int) glyphId);
             }
         }
@@ -424,7 +428,9 @@ public class CmapSubtable
         for (Entry<Integer, Integer> entry : tmpGlyphToChar.entrySet())
         {
             // link the glyphId with the right character code
-            glyphIdToCharacterCode[entry.getKey()] = entry.getValue();
+            int glyphIndex = entry.getKey();
+            if (glyphIdToCharacterCode[glyphIndex] == -1)
+            glyphIdToCharacterCode[glyphIndex] = entry.getValue();
         }
     }
 
@@ -482,7 +488,8 @@ public class CmapSubtable
                 {
                     p = (p + idDelta) % 65536;
                 }
-                glyphIdToCharacterCode[p] = charCode;
+                if (glyphIdToCharacterCode[p] == -1)
+                    glyphIdToCharacterCode[p] = charCode;
                 characterCodeToGlyphId.put(charCode, p);
             }
         }
