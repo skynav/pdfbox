@@ -26,8 +26,8 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.PDPageContentStream.AppendMode;
 import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceGray;
-
 
 import static org.apache.pdfbox.pdmodel.graphics.image.ValidateXImage.checkIdent;
 import static org.apache.pdfbox.pdmodel.graphics.image.ValidateXImage.validate;
@@ -64,7 +64,7 @@ public class CCITTFactoryTest extends TestCase
         checkIdent(bim3, ximage3.getOpaqueImage());
         PDPage page = new PDPage(PDRectangle.A4);
         document.addPage(page);
-        PDPageContentStream contentStream = new PDPageContentStream(document, page, true, false);
+        PDPageContentStream contentStream = new PDPageContentStream(document, page, AppendMode.APPEND, false);
         contentStream.drawImage(ximage3, 0, 0, ximage3.getWidth(), ximage3.getHeight());
         contentStream.close();
         
@@ -74,14 +74,14 @@ public class CCITTFactoryTest extends TestCase
         checkIdent(bim4, ximage4.getOpaqueImage());
         page = new PDPage(PDRectangle.A4);
         document.addPage(page);
-        contentStream = new PDPageContentStream(document, page, true, false);
+        contentStream = new PDPageContentStream(document, page, AppendMode.APPEND, false);
         contentStream.drawImage(ximage4, 0, 0);
         contentStream.close();
        
         document.save(testResultsDir + "/singletiff.pdf");
         document.close();
         
-        document = PDDocument.load(new File(testResultsDir, "singletiff.pdf"), null);
+        document = PDDocument.load(new File(testResultsDir, "singletiff.pdf"), (String)null);
         assertEquals(2, document.getNumberOfPages());
         
         document.close();  
@@ -119,7 +119,7 @@ public class CCITTFactoryTest extends TestCase
             float fY = ximage.getHeight() / page.getMediaBox().getHeight();
             float factor = Math.max(fX, fY);
             document.addPage(page);
-            PDPageContentStream contentStream = new PDPageContentStream(document, page, true, false);
+            PDPageContentStream contentStream = new PDPageContentStream(document, page, AppendMode.APPEND, false);
             contentStream.drawImage(ximage, 0, 0, ximage.getWidth() / factor, ximage.getHeight() / factor);
             contentStream.close();
             ++pdfPageNum;
@@ -130,7 +130,7 @@ public class CCITTFactoryTest extends TestCase
         document.save(testResultsDir + "/multitiff.pdf");
         document.close();
         
-        document = PDDocument.load(new File(testResultsDir, "multitiff.pdf"), null);
+        document = PDDocument.load(new File(testResultsDir, "multitiff.pdf"), (String)null);
         assertEquals(countTiffImages, document.getNumberOfPages());
         
         document.close();  

@@ -16,18 +16,16 @@
  */
 package org.apache.pdfbox.io;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * An implementation of the RandomAccess interface to store a pdf in memory.
+ * An implementation of the RandomAccess interface to store data in memory.
  * The data will be stored in chunks organized in an ArrayList.
- *
  */
-public class RandomAccessBuffer implements RandomAccess, Closeable, Cloneable
+public class RandomAccessBuffer implements RandomAccess, Cloneable
 {
     // default chunk size is 1kb
     private static final int DEFAULT_CHUNK_SIZE = 1024;
@@ -53,8 +51,17 @@ public class RandomAccessBuffer implements RandomAccess, Closeable, Cloneable
      */
     public RandomAccessBuffer()
     {
+        this(DEFAULT_CHUNK_SIZE);
+    }
+
+    /**
+     * Default constructor.
+     */
+    private RandomAccessBuffer(int definedChunkSize)
+    {
         // starting with one chunk
         bufferList = new ArrayList<byte[]>();
+        chunkSize = definedChunkSize;
         currentBuffer = new byte[chunkSize];
         bufferList.add(currentBuffer);
         pointer = 0;
@@ -105,7 +112,7 @@ public class RandomAccessBuffer implements RandomAccess, Closeable, Cloneable
     @Override
     public RandomAccessBuffer clone()
     {
-        RandomAccessBuffer copy = new RandomAccessBuffer();
+        RandomAccessBuffer copy = new RandomAccessBuffer(chunkSize);
 
         copy.bufferList = new ArrayList<byte[]>(bufferList.size());
         for (byte [] buffer : bufferList)

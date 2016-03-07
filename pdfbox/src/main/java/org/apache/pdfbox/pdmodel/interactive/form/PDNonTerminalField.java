@@ -18,6 +18,7 @@ package org.apache.pdfbox.pdmodel.interactive.form;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSBase;
@@ -27,6 +28,7 @@ import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.common.COSArrayList;
 import org.apache.pdfbox.pdmodel.common.COSObjectable;
 import org.apache.pdfbox.pdmodel.fdf.FDFField;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationWidget;
 
 /**
  * A non terminal field in an interactive form.
@@ -66,7 +68,7 @@ public class PDNonTerminalField extends PDField
     public int getFieldFlags()
     {
         int retval = 0;
-        COSInteger ff = (COSInteger) dictionary.getDictionaryObject(COSName.FF);
+        COSInteger ff = (COSInteger) getCOSObject().getDictionaryObject(COSName.FF);
         if (ff != null)
         {
             retval = ff.intValue();
@@ -126,11 +128,14 @@ public class PDNonTerminalField extends PDField
     public List<PDField> getChildren()
     {
         List<PDField> children = new ArrayList<PDField>();
-        COSArray kids = (COSArray)dictionary.getDictionaryObject(COSName.KIDS);
+        COSArray kids = (COSArray)getCOSObject().getDictionaryObject(COSName.KIDS);
         for (int i = 0; i < kids.size(); i++)
         {
-            PDField field = PDField.fromDictionary(acroForm, (COSDictionary)kids.getObject(i), this);
-            children.add(field);
+            PDField field = PDField.fromDictionary(getAcroForm(), (COSDictionary)kids.getObject(i), this);
+            if (field != null)
+            {
+                children.add(field);
+            }
         }
         return children;
     }
@@ -143,7 +148,7 @@ public class PDNonTerminalField extends PDField
     public void setChildren(List<PDField> children)
     {
         COSArray kidsArray = COSArrayList.converterToCOSArray(children);
-        dictionary.setItem(COSName.KIDS, kidsArray);
+        getCOSObject().setItem(COSName.KIDS, kidsArray);
     }
 
     /**
@@ -155,7 +160,7 @@ public class PDNonTerminalField extends PDField
     @Override
     public String getFieldType()
     {
-        return dictionary.getNameAsString(COSName.FT);
+        return getCOSObject().getNameAsString(COSName.FT);
     }
 
     /**
@@ -166,7 +171,7 @@ public class PDNonTerminalField extends PDField
      */
     public COSBase getValue()
     {
-        return dictionary.getDictionaryObject(COSName.V);
+        return getCOSObject().getDictionaryObject(COSName.V);
     }
 
     /**
@@ -178,7 +183,8 @@ public class PDNonTerminalField extends PDField
     @Override
     public String getValueAsString()
     {
-        return dictionary.getDictionaryObject(COSName.V).toString();
+        COSBase fieldValue = getCOSObject().getDictionaryObject(COSName.V);
+        return fieldValue != null ? fieldValue.toString() : "";
     }
 
     /**
@@ -190,7 +196,20 @@ public class PDNonTerminalField extends PDField
      */
     public void setValue(COSBase object) throws IOException
     {
-        dictionary.setItem(COSName.V, object);
+        getCOSObject().setItem(COSName.V, object);
+        // todo: propagate change event to children?
+        // todo: construct appearances of children?
+    }
+    
+   /**
+     * Sets the plain text value of this field.
+     * 
+     * @param value Plain text
+     * @throws IOException if the value could not be set
+     */
+    public void setValue(String value) throws IOException
+    {
+        getCOSObject().setString(COSName.V, value);
         // todo: propagate change event to children?
         // todo: construct appearances of children?
     }
@@ -204,7 +223,7 @@ public class PDNonTerminalField extends PDField
      */
     public COSBase getDefaultValue()
     {
-        return dictionary.getDictionaryObject(COSName.DV);
+        return getCOSObject().getDictionaryObject(COSName.DV);
     }
 
     /**
@@ -216,6 +235,12 @@ public class PDNonTerminalField extends PDField
      */
     public void setDefaultValue(COSBase value)
     {
-        dictionary.setItem(COSName.V, value);
+        getCOSObject().setItem(COSName.V, value);
+    }
+    
+    @Override
+    public List<PDAnnotationWidget> getWidgets()
+    {
+        return Collections.emptyList();
     }
 }

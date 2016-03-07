@@ -18,7 +18,6 @@ package org.apache.pdfbox.pdmodel.font;
 
 import java.awt.geom.GeneralPath;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -28,7 +27,6 @@ import org.apache.fontbox.FontBoxFont;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
-import org.apache.pdfbox.pdmodel.font.encoding.BuiltInEncoding;
 import org.apache.pdfbox.pdmodel.font.encoding.DictionaryEncoding;
 import org.apache.pdfbox.pdmodel.font.encoding.Encoding;
 import org.apache.pdfbox.pdmodel.font.encoding.GlyphList;
@@ -133,25 +131,8 @@ public abstract class PDSimpleFont extends PDFont
             this.encoding = readEncodingFromFont();
         }
 
-        // TTFs have a built-in encoding, but if the font is non-symbolic then we instead
-        // have Standard Encoding
-        if (this.encoding instanceof BuiltInEncoding &&
-            getSymbolicFlag() != null &&!getSymbolicFlag())
-        {
-            this.encoding = StandardEncoding.INSTANCE;
-        }
-
         // normalise the standard 14 name, e.g "Symbol,Italic" -> "Symbol"
         String standard14Name = Standard14Fonts.getMappedFontName(getName());
-        
-        // TTFs may have a built-in encoding, but if the font is standard 14 then we know
-        // it's Standard Encoding
-        if (this.encoding instanceof BuiltInEncoding && isStandard14() &&
-                !standard14Name.equals("Symbol") &&
-                !standard14Name.equals("ZapfDingbats"))
-        {
-            this.encoding = StandardEncoding.INSTANCE;
-        }
 
         // assign the glyph list based on the font
         if ("ZapfDingbats".equals(standard14Name))
@@ -187,28 +168,6 @@ public abstract class PDSimpleFont extends PDFont
     {
         return glyphList;
     }
-
-    /**
-     * Inverts the font's Encoding. Any duplicate (Name -> Code) mappings will be lost.
-     */
-    protected Map<String, Integer> getInvertedEncoding()
-    {
-        if (invertedEncoding != null)
-        {
-            return invertedEncoding;
-        }
-
-        invertedEncoding = new HashMap<String, Integer>();
-        Map<Integer, String> codeToName = encoding.getCodeToNameMap();
-        for (Map.Entry<Integer, String> entry : codeToName.entrySet())
-        {
-            if (!invertedEncoding.containsKey(entry.getValue()))
-            {
-                invertedEncoding.put(entry.getValue(), entry.getKey());
-            }
-        }
-        return invertedEncoding;
-    }
     
     /**
      * Returns true the font is a symbolic (that is, it does not use the Adobe Standard Roman
@@ -225,7 +184,7 @@ public abstract class PDSimpleFont extends PDFont
             }
             else
             {
-                // unless we can prove that the font is symbolic, we assume that it is not
+                // unless we can prove that the font is non-symbolic, we assume that it is not
                 isSymbolic = true;
             }
         }

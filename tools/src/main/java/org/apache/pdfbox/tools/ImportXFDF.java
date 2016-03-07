@@ -64,9 +64,9 @@ public class ImportXFDF
      *
      * @param args command line arguments
      *
-     * @throws Exception If there is an error importing the FDF document.
+     * @throws IOException If there is an error importing the FDF document.
      */
-    public static void main(String[] args) throws Exception
+    public static void main(String[] args) throws IOException
     {
         // suppress the Dock icon on OS X
         System.setProperty("apple.awt.UIElement", "true");
@@ -75,7 +75,7 @@ public class ImportXFDF
         importer.importXFDF( args );
     }
 
-    private void importXFDF( String[] args ) throws Exception
+    private void importXFDF( String[] args ) throws IOException
     {
         PDDocument pdf = null;
         FDFDocument fdf = null;
@@ -94,7 +94,6 @@ public class ImportXFDF
 
                 importer.importFDF( pdf, fdf );
                 pdf.save( args[2] );
-                fdf.save( "tmp/outputXFDFtoPDF.fdf");
             }
         }
         finally
@@ -110,6 +109,7 @@ public class ImportXFDF
     private static void usage()
     {
         System.err.println( "usage: org.apache.pdfbox.tools.ImportXFDF <pdf-file> <fdf-file> <output-file>" );
+        System.exit(1);
     }
 
     /**

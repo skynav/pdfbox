@@ -16,6 +16,9 @@
  */
 package org.apache.pdfbox.pdmodel.interactive.form;
 
+import java.io.IOException;
+import java.util.List;
+
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
 
@@ -59,7 +62,7 @@ public final class PDComboBox extends PDChoice
      */
     public boolean isEdit()
     {
-        return dictionary.getFlag(COSName.FF, FLAG_EDIT);
+        return getCOSObject().getFlag(COSName.FF, FLAG_EDIT);
     }
 
     /**
@@ -69,6 +72,23 @@ public final class PDComboBox extends PDChoice
      */
     public void setEdit(boolean edit)
     {
-        dictionary.setFlag(COSName.FF, FLAG_EDIT, edit);
+        getCOSObject().setFlag(COSName.FF, FLAG_EDIT, edit);
+    }
+    
+    @Override
+    void constructAppearances() throws IOException
+    {
+        AppearanceGeneratorHelper apHelper;
+        apHelper = new AppearanceGeneratorHelper(this);
+        List<String> values = getValue();
+        
+        if (!values.isEmpty())
+        {
+            apHelper.setAppearanceValue(values.get(0));
+        }
+        else
+        {
+            apHelper.setAppearanceValue("");
+        }
     }
 }

@@ -82,6 +82,11 @@ public class PDPanoseClassification
         return bytes[9];
     }
 
+    public byte[] getBytes()
+    {
+        return bytes;
+    }
+    
     @Override
     public String toString()
     {

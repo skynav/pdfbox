@@ -28,8 +28,6 @@ import java.io.IOException;
 /**
  * This is an example on how to an action to go to the second page when the PDF is opened.
  *
- * Usage: java org.apache.pdfbox.examples.pdmodel.GoToSecondPageOnOpen &lt;input-pdf&gt; &lt;output-pdf&gt;
- *
  * @author Ben Litchfield
  */
 public final class GoToSecondBookmarkOnOpen
@@ -44,9 +42,9 @@ public final class GoToSecondBookmarkOnOpen
      *
      * @param args The command line arguments.
      *
-     * @throws Exception If there is an error parsing the document.
+     * @throws IOException If there is an error parsing the document.
      */
-    public static void main( String[] args ) throws Exception
+    public static void main( String[] args ) throws IOException
     {
         if( args.length != 2 )
         {
@@ -96,7 +94,7 @@ public final class GoToSecondBookmarkOnOpen
      */
     private static void usage()
     {
-        System.err.println( "Usage: java org.apache.pdfbox.examples.pdmodel.GoToSecondBookmarkOnOpen" +
+        System.err.println( "Usage: java " + GoToSecondBookmarkOnOpen.class.getName() +
             "<input-pdf> <output-pdf>" );
     }
 }

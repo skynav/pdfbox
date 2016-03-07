@@ -35,8 +35,15 @@ import org.apache.pdfbox.cos.COSObjectKey;
  * objects.
  * @author Adam Nichols
  */
-public class DecompressObjectstreams 
+public final class DecompressObjectstreams 
 {
+    
+    /**
+     * private constructor.
+     */
+    private DecompressObjectstreams()
+    {
+    }
 
     /**
      * This is a very simple program, so everything is in the main method.
@@ -91,7 +98,7 @@ public class DecompressObjectstreams
         }
         catch(Exception e) 
         {
-            System.out.println("Error processing file: " + e.getMessage());
+            System.err.println("Error processing file: " + e.getMessage());
         }
         finally
         {
@@ -113,10 +120,13 @@ public class DecompressObjectstreams
      */
     private static void usage()
     {
-        System.err.println( "Usage: java -cp pdfbox-app-x.y.z.jar "
-                + "org.apache.pdfbox.tools.DecompressObjectstreams <input PDF File> [<Output PDF File>]\n"
-                + "  <input PDF File>       The PDF document to decompress\n"
-                + "  <output PDF File>      The output filename (default is to replace .pdf with .unc.pdf)");
+        String message = "Usage: java -cp pdfbox-app-x.y.z.jar "
+                + "org.apache.pdfbox.tools.DecompressObjectstreams <inputfile> [<outputfile>]\n"
+                + "\nOptions:\n"
+                + "  <inputfile>  : The PDF document to decompress\n"
+                + "  <outputfile> : The output filename (default is to replace .pdf with .unc.pdf)";
+        
+        System.err.println(message);
         System.exit(1);
     }
 }

@@ -28,17 +28,17 @@ import org.apache.xmpbox.xml.XmpSerializer;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.util.GregorianCalendar;
+import javax.xml.transform.TransformerException;
 
 /**
  * This is an example on how to add metadata to a document.
  *
- * Usage: java org.apache.pdfbox.examples.pdmodel.AddMetadataToDocument &lt;input-pdf&gt; &lt;output-pdf&gt;
- *
  * @author Ben Litchfield
  * 
  */
-public class AddMetadataFromDocInfo
+public final class AddMetadataFromDocInfo
 {
     private AddMetadataFromDocInfo()
     {
@@ -50,9 +50,10 @@ public class AddMetadataFromDocInfo
      *
      * @param args The command line arguments.
      *
-     * @throws Exception If there is an error parsing the document.
+     * @throws IOException If there is an error parsing the document.
+     * @throws TransformerException
      */
-    public static void main( String[] args ) throws Exception
+    public static void main( String[] args ) throws IOException, TransformerException
     {
         if( args.length != 2 )
         {
@@ -115,7 +116,6 @@ public class AddMetadataFromDocInfo
      */
     private static void usage()
     {
-        System.err.println( "Usage: java org.apache.pdfbox.examples.pdmodel.AddMetadataFromDocInfo " +
-            "<input-pdf> <output-pdf>" );
+        System.err.println( "Usage: java " + AddMetadataFromDocInfo.class.getName() + " <input-pdf> <output-pdf>" );
     }
 }

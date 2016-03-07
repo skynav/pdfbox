@@ -44,10 +44,11 @@ public class ExportXFDF
      * see usage() for commandline
      *
      * @param args command line arguments
+     * @throws IOException in case the file can not be read or the data can not be exported.
      *
-     * @throws Exception If there is an error importing the FDF document.
+     * @throws IOException If there is an error importing the FDF document.
      */
-    public static void main(String[] args) throws Exception
+    public static void main(String[] args) throws IOException
     {
         // suppress the Dock icon on OS X
         System.setProperty("apple.awt.UIElement", "true");
@@ -56,7 +57,7 @@ public class ExportXFDF
         exporter.exportXFDF( args );
     }
 
-    private void exportXFDF( String[] args ) throws Exception
+    private void exportXFDF( String[] args ) throws IOException
     {
         PDDocument pdf = null;
         FDFDocument fdf = null;
@@ -106,8 +107,12 @@ public class ExportXFDF
      */
     private static void usage()
     {
-        System.err.println( "usage: org.apache.pdfbox.ExortXFDF <pdf-file> [output-xfdf-file]" );
-        System.err.println( "    [output-xfdf-file] - Default is pdf name, test.pdf->test.xfdf" );
+        String message = "Usage: org.apache.pdfbox.ExportXFDF <inputfile> [output-xfdf-file]\n"
+                + "\nOptions:\n"
+                + "  [output-xfdf-file] : Default is pdf name, test.pdf->test.xfdf";
+        
+        System.err.println(message);
+        System.exit(1);
     }
 
     /**

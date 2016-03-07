@@ -21,8 +21,8 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
-
 import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
@@ -32,8 +32,6 @@ import org.apache.pdfbox.filter.Filter;
 import org.apache.pdfbox.filter.FilterFactory;
 import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.common.COSArrayList;
-import org.apache.pdfbox.pdmodel.common.PDMemoryStream;
-import org.apache.pdfbox.pdmodel.common.PDStream;
 import org.apache.pdfbox.pdmodel.graphics.color.PDColorSpace;
 import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceGray;
 
@@ -53,7 +51,8 @@ public final class PDInlineImage implements PDImage
     private final PDResources resources;
 
     // image data
-    private final PDStream stream;
+    private final byte[] rawData;
+    private final byte[] decodedData;
 
     /**
      * Creates an inline image from the given parameters and data.
@@ -61,18 +60,20 @@ public final class PDInlineImage implements PDImage
      * @param parameters the image parameters
      * @param data the image data
      * @param resources the current resources
+     * @throws IOException if the stream cannot be decoded
      */
     public PDInlineImage(COSDictionary parameters, byte[] data, PDResources resources)
             throws IOException
     {
         this.parameters = parameters;
         this.resources = resources;
+        this.rawData = data;
 
         DecodeResult decodeResult = null;
         List<String> filters = getFilters();
         if (filters == null || filters.isEmpty())
         {
-            this.stream = new PDMemoryStream(data);
+            this.decodedData = data;
         }
         else
         {
@@ -86,8 +87,7 @@ public final class PDInlineImage implements PDImage
                 decodeResult = filter.decode(in, out, parameters, i);
                 in = new ByteArrayInputStream(out.toByteArray());
             }
-            byte[] finalData = out.toByteArray();
-            this.stream = new PDMemoryStream(finalData);
+            this.decodedData = out.toByteArray();
         }
 
         // repair parameters
@@ -125,16 +125,10 @@ public final class PDInlineImage implements PDImage
     @Override
     public PDColorSpace getColorSpace() throws IOException
     {
-        COSBase cs = parameters.getDictionaryObject(COSName.CS);
-        if (cs == null)
-        {
-            cs = parameters.getDictionaryObject(COSName.COLORSPACE);
-        }
-
+        COSBase cs = parameters.getDictionaryObject(COSName.CS, COSName.COLORSPACE);
         if (cs != null)
         {
-            // TODO: handling of abbreviated color space names belongs here, not in the factory
-            return PDColorSpace.create(cs, resources);
+            return createColorSpace(cs);
         }
         else if (isStencil())
         {
@@ -144,8 +138,52 @@ public final class PDInlineImage implements PDImage
         else
         {
             // an image without a color space is always broken
-            throw new IOException("could not determine color space");
+            throw new IOException("could not determine inline image color space");
         }
+    }
+    
+    // deliver the long name of a device colorspace, or the parameter
+    private COSBase toLongName(COSBase cs)
+    {
+        if (COSName.RGB.equals(cs))
+        {
+            return COSName.DEVICERGB;
+        }
+        if (COSName.CMYK.equals(cs))
+        {
+            return COSName.DEVICECMYK;
+        }
+        if (COSName.G.equals(cs))
+        {
+            return COSName.DEVICEGRAY;
+        }
+        return cs;
+    }
+    
+    private PDColorSpace createColorSpace(COSBase cs) throws IOException
+    {
+        if (cs instanceof COSName)
+        {
+            return PDColorSpace.create(toLongName(cs), resources);
+        }
+
+        if (cs instanceof COSArray && ((COSArray) cs).size() > 1)
+        {
+            COSArray srcArray = (COSArray) cs;
+            COSBase csType = srcArray.get(0);
+            if (COSName.I.equals(csType) || COSName.INDEXED.equals(csType))
+            {
+                COSArray dstArray = new COSArray();
+                dstArray.addAll(srcArray);
+                dstArray.set(0, COSName.INDEXED);
+                dstArray.set(1, toLongName(srcArray.get(1)));
+                return PDColorSpace.create(dstArray, resources);
+            }
+
+            throw new IOException("Illegal type of inline image color space: " + csType);
+        }
+
+        throw new IOException("Illegal type of object for inline image color space: " + cs);
     }
 
     @Override
@@ -196,8 +234,7 @@ public final class PDInlineImage implements PDImage
     }
 
     /**
-     * Returns a list of filters applied to this stream, or null if there are
-     * none.
+     * Returns a list of filters applied to this stream, or null if there are none.
      *
      * @return a list of filters applied to this stream
      */
@@ -254,11 +291,49 @@ public final class PDInlineImage implements PDImage
     }
 
     @Override
-    public PDStream getStream() throws IOException
+    public InputStream createInputStream() throws IOException
     {
-        return stream;
+        return new ByteArrayInputStream(decodedData);
     }
 
+    @Override
+    public InputStream createInputStream(List<String> stopFilters) throws IOException
+    {
+        List<String> filters = getFilters();
+        ByteArrayInputStream in = new ByteArrayInputStream(rawData);
+        ByteArrayOutputStream out = new ByteArrayOutputStream(rawData.length);
+        for (int i = 0; i < filters.size(); i++)
+        {
+            // TODO handling of abbreviated names belongs here, rather than in other classes
+            out.reset();
+            if (stopFilters.contains(filters.get(i)))
+            {
+                break;
+            }
+            else
+            {
+                Filter filter = FilterFactory.INSTANCE.getFilter(filters.get(i));
+                filter.decode(in, out, parameters, i);
+                in = new ByteArrayInputStream(out.toByteArray());
+            }
+        }
+        return new ByteArrayInputStream(out.toByteArray());
+    }
+
+    @Override
+    public boolean isEmpty()
+    {
+        return decodedData.length == 0;
+    }
+
+    /**
+     * Returns the inline image data.
+     */
+    public byte[] getData()
+    {
+        return decodedData;
+    }
+    
     @Override
     public BufferedImage getImage() throws IOException
     {
@@ -296,6 +371,7 @@ public final class PDInlineImage implements PDImage
      *
      * @return The image suffix.
      */
+    @Override
     public String getSuffix()
     {
         // TODO implement me

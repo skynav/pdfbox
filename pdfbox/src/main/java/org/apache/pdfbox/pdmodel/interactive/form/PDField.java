@@ -17,6 +17,8 @@
 package org.apache.pdfbox.pdmodel.interactive.form;
 
 import java.io.IOException;
+import java.util.List;
+
 import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
@@ -24,6 +26,7 @@ import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.common.COSObjectable;
 import org.apache.pdfbox.pdmodel.fdf.FDFField;
 import org.apache.pdfbox.pdmodel.interactive.action.PDFormFieldAdditionalActions;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationWidget;
 
 /**
  * A field in an interactive form.
@@ -33,24 +36,11 @@ public abstract class PDField implements COSObjectable
     private static final int FLAG_READ_ONLY = 1;
     private static final int FLAG_REQUIRED = 1 << 1;
     private static final int FLAG_NO_EXPORT = 1 << 2;
-    
-    /**
-     * Creates a COSField subclass from the given COS field. This is for reading fields from PDFs.
-     *
-     * @param form the form that the field is part of
-     * @param field the dictionary representing a field element
-     * @param parent the parent node of the node to be created, or null if root.
-     * @return a new PDField instance
-     */
-    static PDField fromDictionary(PDAcroForm form, COSDictionary field, PDNonTerminalField parent)
-    {
-        return PDFieldFactory.createField(form, field, parent);
-    }
 
-    protected final PDAcroForm acroForm;
-    protected final PDNonTerminalField parent;
-    protected final COSDictionary dictionary;
-
+    private final PDAcroForm acroForm;
+    private final PDNonTerminalField parent;
+    private final COSDictionary dictionary;
+   
     /**
      * Constructor.
      * 
@@ -74,6 +64,19 @@ public abstract class PDField implements COSObjectable
         this.parent = parent;
     }
     
+    /**
+     * Creates a COSField subclass from the given COS field. This is for reading fields from PDFs.
+     *
+     * @param form the form that the field is part of
+     * @param field the dictionary representing a field element
+     * @param parent the parent node of the node to be created, or null if root.
+     * @return a new PDField instance
+     */
+    static PDField fromDictionary(PDAcroForm form, COSDictionary field, PDNonTerminalField parent)
+    {
+        return PDFieldFactory.createField(form, field, parent);
+    }
+
     /**
      * Returns the given attribute, inheriting from parent nodes if necessary.
      *
@@ -108,16 +111,36 @@ public abstract class PDField implements COSObjectable
     /**
      * Returns a string representation of the "V" entry, or an empty string.
      * 
-     * @return A non-null string.
+     * @return The list of widget annotations.
      */
     public abstract String getValueAsString();
+
+    /**
+     * Sets the value of the field.
+     *
+     * @param value the new field value.
+     * 
+     * @throws IOException if the value could not be set
+     */
+    public abstract void setValue(String value) throws IOException;
+    
+    
+    /**
+     * Returns the widget annotations associated with this field.
+     * 
+     * For {@link PDNonTerminalField} the list will be empty as non terminal fields
+     * have no visual representation in the form.
+     * 
+     * @return A non-null string.
+     */
+    public abstract List<PDAnnotationWidget> getWidgets();
     
     /**
      * sets the field to be read-only.
      * 
      * @param readonly The new flag for readonly.
      */
-    public void setReadonly(boolean readonly)
+    public void setReadOnly(boolean readonly)
     {
         dictionary.setFlag(COSName.FF, FLAG_READ_ONLY, readonly);
     }
@@ -126,7 +149,7 @@ public abstract class PDField implements COSObjectable
      * 
      * @return true if the field is readonly
      */
-    public boolean isReadonly()
+    public boolean isReadOnly()
     {
         return dictionary.getFlag(COSName.FF, FLAG_READ_ONLY);
     }
@@ -289,7 +312,7 @@ public abstract class PDField implements COSObjectable
                 {
                     retval = PDField.fromDictionary(acroForm, kidDictionary,
                                                     (PDNonTerminalField)this);
-                    if (name.length > nameIndex + 1)
+                    if (retval != null && name.length > nameIndex + 1)
                     {
                         retval = retval.findKid(name, nameIndex + 1);
                     }

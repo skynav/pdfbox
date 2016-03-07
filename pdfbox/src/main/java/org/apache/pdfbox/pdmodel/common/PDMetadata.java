@@ -42,8 +42,8 @@ public class PDMetadata extends PDStream
     public PDMetadata( PDDocument document )
     {
         super( document );
-        getStream().setName( COSName.TYPE, "Metadata" );
-        getStream().setName( COSName.SUBTYPE, "XML" );
+        getCOSObject().setName( COSName.TYPE, "Metadata" );
+        getCOSObject().setName( COSName.SUBTYPE, "XML" );
     }
 
     /**
@@ -52,14 +52,13 @@ public class PDMetadata extends PDStream
      *
      * @param doc The document that will hold the stream.
      * @param str The stream parameter.
-     * @param filtered True if the stream already has a filter applied.
      * @throws IOException If there is an error creating the stream in the document.
      */
-    public PDMetadata( PDDocument doc, InputStream str, boolean filtered ) throws IOException
+    public PDMetadata( PDDocument doc, InputStream str) throws IOException
     {
-        super( doc, str, filtered );
-        getStream().setName( COSName.TYPE, "Metadata" );
-        getStream().setName( COSName.SUBTYPE, "XML" );
+        super( doc, str );
+        getCOSObject().setName( COSName.TYPE, "Metadata" );
+        getCOSObject().setName( COSName.SUBTYPE, "XML" );
     }
 
     /**

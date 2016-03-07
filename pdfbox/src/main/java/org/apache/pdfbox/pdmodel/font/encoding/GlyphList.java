@@ -33,9 +33,48 @@ import java.util.Map;
 public final class GlyphList
 {
     private static final Log LOG = LogFactory.getLog(GlyphList.class);
-    private static final GlyphList DEFAULT;
-    private static final GlyphList ZAPF_DINGBATS;
 
+    // Adobe Glyph List (AGL)
+    private static final GlyphList DEFAULT = load("glyphlist.txt", 4281);
+    
+    // Zapf Dingbats has its own glyph list
+    private static final GlyphList ZAPF_DINGBATS = load("zapfdingbats.txt",201);
+    
+    /**
+     * Loads a glyph list from disk.
+     */
+    private static GlyphList load(String filename, int numberOfEntries)
+    {
+        ClassLoader loader = GlyphList.class.getClassLoader();
+        String path = "org/apache/pdfbox/resources/glyphlist/";
+        try
+        {
+            return new GlyphList(loader.getResourceAsStream(path + filename), numberOfEntries);
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    static
+    {
+        // not supported in PDFBox 2.0, but we issue a warning, see PDFBOX-2379
+        try
+        {
+            String location = System.getProperty("glyphlist_ext");
+            if (location != null)
+            {
+                throw new UnsupportedOperationException("glyphlist_ext is no longer supported, "
+                        + "use GlyphList.DEFAULT.addGlyphs(Properties) instead");
+            }
+        }
+        catch (SecurityException e)  // can occur on System.getProperty
+        {
+            // PDFBOX-1946 ignore and continue
+        }
+    }
+    
     /**
      * Returns the Adobe Glyph List (AGL).
      */
@@ -52,53 +91,24 @@ public final class GlyphList
         return ZAPF_DINGBATS;
     }
 
-    static
-    {
-        try
-        {
-            ClassLoader loader = GlyphList.class.getClassLoader();
-            String path = "org/apache/pdfbox/resources/glyphlist/";
-
-            // Adobe Glyph List (AGL)
-            DEFAULT = new GlyphList(loader.getResourceAsStream(path + "glyphlist.txt"));
-
-            // Zapf Dingbats has its own glyph list
-            ZAPF_DINGBATS = new GlyphList(loader.getResourceAsStream(path + "zapfdingbats.txt"));
-
-            // not supported in PDFBox 2.0, but we issue a warning, see PDFBOX-2379
-            try
-            {
-                String location = System.getProperty("glyphlist_ext");
-                if (location != null)
-                {
-                    throw new UnsupportedOperationException("glyphlist_ext is no longer supported, "
-                            + "use GlyphList.DEFAULT.addGlyphs(Properties) instead");
-                }
-            }
-            catch (SecurityException e)  // can occur on System.getProperty
-            {
-                // PDFBOX-1946 ignore and continue
-            }
-        }
-        catch (IOException e)
-        {
-            throw new RuntimeException(e);
-        }
-    }
-
+    // read-only mappings, never modified outside GlyphList's constructor
     private final Map<String, String> nameToUnicode;
     private final Map<String, String> unicodeToName;
+    
+    // additional read/write cache for uniXXXX names
+    private final Map<String, String> uniNameToUnicodeCache = new HashMap<String, String>();
 
     /**
      * Creates a new GlyphList from a glyph list file.
      *
+     * @param numberOfEntries number of expected values used to preallocate the correct amount of memory
      * @param input glyph list in Adobe format
      * @throws IOException if the glyph list could not be read
      */
-    public GlyphList(InputStream input) throws IOException
+    public GlyphList(InputStream input, int numberOfEntries) throws IOException
     {
-        nameToUnicode = new HashMap<String, String>();
-        unicodeToName = new HashMap<String, String>();
+        nameToUnicode = new HashMap<String, String>(numberOfEntries);
+        unicodeToName = new HashMap<String, String>(numberOfEntries);
         loadList(input);
     }
 
@@ -124,7 +134,7 @@ public final class GlyphList
             while (in.ready())
             {
                 String line = in.readLine();
-                if (!line.startsWith("#"))
+                if (line != null && !line.startsWith("#"))
                 {
                     String[] parts = line.split(";");
                     if (parts.length < 2)
@@ -212,6 +222,13 @@ public final class GlyphList
         }
 
         String unicode = nameToUnicode.get(name);
+        if (unicode != null)
+        {
+            return unicode;
+        }
+        
+        // separate read/write cache for thread safety
+        unicode = uniNameToUnicodeCache.get(name);
         if (unicode == null)
         {
             // test if we have a suffix and if so remove it
@@ -265,7 +282,7 @@ public final class GlyphList
                     LOG.warn("Not a number in Unicode character name: " + name);
                 }
             }
-            nameToUnicode.put(name, unicode);
+            uniNameToUnicodeCache.put(name, unicode);
         }
         return unicode;
     }

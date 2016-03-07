@@ -18,7 +18,9 @@ package org.apache.pdfbox.tools;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 
@@ -34,7 +36,7 @@ import org.apache.pdfbox.pdmodel.encryption.StandardProtectionPolicy;
  *
  * @author  Ben Litchfield
  */
-public class Encrypt
+public final class Encrypt
 {
     private Encrypt()
     {
@@ -45,9 +47,10 @@ public class Encrypt
      *
      * @param args The command-line arguments.
      *
-     * @throws Exception If there is an error decrypting the document.
+     * @throws IOException If there is an error decrypting the document.
+     * @throws CertificateException If there is an error with a certificate.
      */
-    public static void main( String[] args ) throws Exception
+    public static void main( String[] args ) throws IOException, CertificateException
     {
         // suppress the Dock icon on OS X
         System.setProperty("apple.awt.UIElement", "true");
@@ -56,7 +59,7 @@ public class Encrypt
         encrypt.encrypt( args );
     }
 
-    private void encrypt( String[] args ) throws Exception
+    private void encrypt( String[] args ) throws IOException, CertificateException
     {
         if( args.length < 1 )
         {
@@ -221,23 +224,25 @@ public class Encrypt
      */
     private static void usage()
     {
-        System.err.println( "usage: java -jar pdfbox-app-x.y.z.jar Encrypt [options] <inputfile> [outputfile]" );
-        System.err.println( "   -O <password>                            " +
-                                            "Set the owner password(ignored if cert is set)" );
-        System.err.println( "   -U <password>                            " +
-                                            "Set the user password(ignored if cert is set)" );
-        System.err.println( "   -certFile <path to cert>                 Path to X.509 certificate" );
-        System.err.println( "   -canAssemble <true|false>                Set the assemble permission" );
-        System.err.println( "   -canExtractContent <true|false>          Set the extraction permission" );
-        System.err.println( "   -canExtractForAccessibility <true|false> Set the extraction permission" );
-        System.err.println( "   -canFillInForm <true|false>              Set the fill in form permission" );
-        System.err.println( "   -canModify <true|false>                  Set the modify permission" );
-        System.err.println( "   -canModifyAnnotations <true|false>       Set the modify annots permission" );
-        System.err.println( "   -canPrint <true|false>                   Set the print permission" );
-        System.err.println( "   -canPrintDegraded <true|false>           Set the print degraded permission" );
-        System.err.println( "   -keyLength <length>                      The length of the key in bits (valid values: 40, 128 or 256, default is 40)" );
-        System.err.println( "\nNote: By default all permissions are set to true!" );
-        System.exit( 1 );
+        String message = "Usage: java -jar pdfbox-app-x.y.z.jar Encrypt [options] <inputfile> [outputfile]\n"
+                + "\nOptions:\n"
+                + "  -O <password>                            : Set the owner password (ignored if cert is set)\n"
+                + "  -U <password>                            : Set the user password (ignored if cert is set)\n"
+                + "  -certFile <path to cert>                 : Path to X.509 certificate\n"
+                + "  -canAssemble <true|false>                : Set the assemble permission\n"
+                + "  -canExtractContent <true|false>          : Set the extraction permission\n"
+                + "  -canExtractForAccessibility <true|false> : Set the extraction permission\n"
+                + "  -canFillInForm <true|false>              : Set the fill in form permission\n"
+                + "  -canModify <true|false>                  : Set the modify permission\n"
+                + "  -canModifyAnnotations <true|false>       : Set the modify annots permission\n"
+                + "  -canPrint <true|false>                   : Set the print permission\n"
+                + "  -canPrintDegraded <true|false>           : Set the print degraded permission\n"
+                + "  -keyLength <length>                      : The length of the key in bits "
+                + "(valid values: 40, 128 or 256, default is 40)\n"
+                + "\nNote: By default all permissions are set to true!";
+        
+        System.err.println(message);
+        System.exit(1);
     }
 
 }

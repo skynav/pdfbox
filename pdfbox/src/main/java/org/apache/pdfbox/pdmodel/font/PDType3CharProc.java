@@ -17,11 +17,21 @@
 
 package org.apache.pdfbox.pdmodel.font;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.pdfbox.contentstream.PDContentStream;
+import org.apache.pdfbox.contentstream.operator.Operator;
+import org.apache.pdfbox.cos.COSBase;
+import org.apache.pdfbox.cos.COSNumber;
+import org.apache.pdfbox.cos.COSObject;
 import org.apache.pdfbox.cos.COSStream;
+import org.apache.pdfbox.pdfparser.PDFStreamParser;
 import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.common.COSObjectable;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.common.PDStream;
 import org.apache.pdfbox.util.Matrix;
 
 /**
@@ -50,11 +60,16 @@ public final class PDType3CharProc implements COSObjectable, PDContentStream
     {
         return font;
     }
+    
+    public PDStream getContentStream()
+    {
+        return new PDStream(charStream);
+    }
 
     @Override
-    public COSStream getContentStream()
+    public InputStream getContents() throws IOException
     {
-        return charStream;
+        return charStream.createInputStream();
     }
 
     @Override
@@ -69,11 +84,112 @@ public final class PDType3CharProc implements COSObjectable, PDContentStream
         return font.getFontBBox();
     }
 
+    /**
+     * Calculate the bounding box of this glyph. This will work only if the first operator in the
+     * stream is d1.
+     *
+     * @return the bounding box of this glyph, or null if the first operator is not d1.
+     * @throws IOException If an io error occurs while parsing the stream.
+     */
+    public PDRectangle getGlyphBBox() throws IOException
+    {
+        List<COSBase> arguments = new ArrayList<COSBase>();
+        PDFStreamParser parser = new PDFStreamParser(this);
+        Object token = parser.parseNextToken();
+        while (token != null)
+        {
+            if (token instanceof COSObject)
+            {
+                arguments.add(((COSObject) token).getObject());
+            }
+            else if (token instanceof Operator)
+            {
+                if (((Operator) token).getName().equals("d1") && arguments.size() == 6)
+                {
+                    for (int i = 0; i < 6; ++i)
+                    {
+                        if (!(arguments.get(i) instanceof COSNumber))
+                        {
+                            return null;
+                        }
+                    }
+                    return new PDRectangle(
+                            ((COSNumber) arguments.get(2)).floatValue(),
+                            ((COSNumber) arguments.get(3)).floatValue(),
+                            ((COSNumber) arguments.get(4)).floatValue() - ((COSNumber) arguments.get(2)).floatValue(),
+                            ((COSNumber) arguments.get(5)).floatValue() - ((COSNumber) arguments.get(3)).floatValue());
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            else
+            {
+                arguments.add((COSBase) token);
+            }
+            token = parser.parseNextToken();
+        }
+        return null;
+    }
+
     @Override
     public Matrix getMatrix()
     {
         return font.getFontMatrix();
     }
 
-    // todo: add methods for getting the character's width from the stream
+    /**
+     * todo.
+     * 
+     * @return
+     * @throws IOException
+     */
+    public float getWidth() throws IOException
+    {
+        List<COSBase> arguments = new ArrayList<COSBase>();
+        PDFStreamParser parser = new PDFStreamParser(this);
+        Object token = parser.parseNextToken();
+        while (token != null)
+        {
+            if (token instanceof COSObject)
+            {
+                arguments.add(((COSObject) token).getObject());
+            }
+            else if (token instanceof Operator)
+            {
+                return parseWidth((Operator) token, arguments);
+            }
+            else
+            {
+                arguments.add((COSBase) token);
+            }
+            token = parser.parseNextToken();
+        }
+        throw new IOException("Unexpected end of stream");
+    }
+
+    private float parseWidth(Operator operator, List arguments) throws IOException
+    {
+        if (operator.getName().equals("d0") || operator.getName().equals("d1"))
+        {
+            Object obj = arguments.get(0);
+            if (obj instanceof Number)
+            {
+                return ((Number) obj).floatValue();
+            }
+            else if (obj instanceof COSNumber)
+            {
+                return ((COSNumber) obj).floatValue();
+            }
+            else
+            {
+                throw new IOException("Unexpected argument type: " + obj.getClass().getName());
+            }
+        }
+        else
+        {
+            throw new IOException("First operator must be d0 or d1");
+        }
+    }
 }

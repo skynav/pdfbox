@@ -34,8 +34,12 @@ import org.apache.fontbox.cff.Type2CharString;
 import org.apache.fontbox.util.BoundingBox;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.io.IOUtils;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.common.PDStream;
 import org.apache.pdfbox.util.Matrix;
+
+
+import static org.apache.pdfbox.pdmodel.font.UniUtil.getUniNameOfCodePoint;
 
 /**
  * Type 0 CIDFont (CFF).
@@ -57,6 +61,7 @@ public class PDCIDFontType0 extends PDCIDFont
     private Float avgWidth = null;
     private Matrix fontMatrix;
     private final AffineTransform fontMatrixTransform;
+    private BoundingBox fontBBox;
 
     /**
      * Constructor.
@@ -92,7 +97,7 @@ public class PDCIDFontType0 extends PDCIDFont
             CFFParser cffParser = new CFFParser();
             try
             {
-                cffFont = cffParser.parse(bytes).get(0);
+                cffFont = cffParser.parse(bytes, new ByteSource()).get(0);
             }
             catch (IOException e)
             {
@@ -120,23 +125,27 @@ public class PDCIDFontType0 extends PDCIDFont
         else
         {
             // find font or substitute
-            CIDFontMapping mapping = FontMapper.getCIDFont(getBaseFont(), getFontDescriptor(),
-                                                           getCIDSystemInfo());
-
+            CIDFontMapping mapping = FontMappers.instance()
+                                                .getCIDFont(getBaseFont(), getFontDescriptor(),
+                                                            getCIDSystemInfo());
+            FontBoxFont font;
             if (mapping.isCIDFont())
             {
                 cidFont = (CFFCIDFont)mapping.getFont().getCFF().getFont();
                 t1Font = null;
+                font = cidFont;
             }
             else
             {
                 cidFont = null;
                 t1Font = mapping.getTrueTypeFont();
+                font = t1Font;
             }
 
             if (mapping.isFallback())
             {
-                LOG.warn("Using fallback " + t1Font.getName() + " for CID-keyed font " + getBaseFont());
+                LOG.warn("Using fallback " + font.getName() + " for CID-keyed font " +
+                         getBaseFont());
             }
             isEmbedded = false;
             isDamaged = fontIsDamaged;
@@ -180,10 +189,37 @@ public class PDCIDFontType0 extends PDCIDFont
         }
         return fontMatrix;
     }
+    
+    private class ByteSource implements CFFParser.ByteSource
+    {
+        @Override
+        public byte[] getBytes() throws IOException
+        {
+            PDStream ff3Stream = getFontDescriptor().getFontFile3();
+            return IOUtils.toByteArray(ff3Stream.createInputStream());
+        }
+    }
 
     @Override
     public BoundingBox getBoundingBox()
     {
+        if (fontBBox == null)
+        {
+            fontBBox = generateBoundingBox();
+        }
+        return fontBBox;
+    }
+
+    private BoundingBox generateBoundingBox()
+    {
+        if (getFontDescriptor() != null) {
+            PDRectangle bbox = getFontDescriptor().getFontBoundingBox();
+            if (bbox.getLowerLeftX() != 0 || bbox.getLowerLeftY() != 0 ||
+                bbox.getUpperRightX() != 0 || bbox.getUpperRightY() != 0) {
+                return new BoundingBox(bbox.getLowerLeftX(), bbox.getLowerLeftY(),
+                                       bbox.getUpperRightX(), bbox.getUpperRightY());
+            }
+        }
         if (cidFont != null)
         {
             return cidFont.getFontBBox();
@@ -221,6 +257,21 @@ public class PDCIDFontType0 extends PDCIDFont
     }
 
     /**
+     * Returns the embedded or substituted font.
+     */
+    public FontBoxFont getFontBoxFont()
+    {
+        if (cidFont != null)
+        {
+            return cidFont;
+        }
+        else
+        {
+            return t1Font;
+        }
+    }
+
+    /**
      * Returns the Type 2 charstring for the given CID, or null if the substituted font does not
      * contain Type 2 charstrings.
      *
@@ -254,7 +305,7 @@ public class PDCIDFontType0 extends PDCIDFont
         {
             return ".notdef";
         }
-        return String.format("uni%04X", unicodes.codePointAt(0));
+        return getUniNameOfCodePoint(unicodes.codePointAt(0));
     }
 
     @Override

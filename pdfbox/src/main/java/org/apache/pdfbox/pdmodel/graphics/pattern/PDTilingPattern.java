@@ -16,6 +16,8 @@
  */
 package org.apache.pdfbox.pdmodel.graphics.pattern;
 
+import java.io.IOException;
+import java.io.InputStream;
 import org.apache.pdfbox.contentstream.PDContentStream;
 import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSDictionary;
@@ -23,6 +25,7 @@ import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.common.PDStream;
 
 /**
  * A tiling pattern dictionary.
@@ -67,26 +70,6 @@ public class PDTilingPattern extends PDAbstractPattern implements PDContentStrea
     public int getPatternType()
     {
         return PDAbstractPattern.TYPE_TILING_PATTERN;
-    }
-
-    /**
-     * This will set the length of the content stream.
-     * @param length The new stream length.
-     */
-    @Override
-    public void setLength(int length)
-    {
-        getCOSObject().setInt(COSName.LENGTH, length);
-    }
-
-    /**
-     * This will return the length of the content stream.
-     * @return The length of the content stream
-     */
-    @Override
-    public int getLength()
-    {
-        return getCOSObject().getInt( COSName.LENGTH, 0 );
     }
 
     /**
@@ -165,11 +148,21 @@ public class PDTilingPattern extends PDAbstractPattern implements PDContentStrea
         float yStep = getCOSObject().getFloat( COSName.Y_STEP, 0 );
         return yStep == Short.MAX_VALUE ? 0 : yStep;
     }
+    
+    public PDStream getContentStream()
+    {
+        return new PDStream((COSStream)getCOSObject());
+    }
 
     @Override
-    public COSStream getContentStream()
+    public InputStream getContents() throws IOException
     {
-        return (COSStream)getCOSObject();
+        COSDictionary dict = getCOSObject();
+        if (dict instanceof COSStream)
+        {
+            return ((COSStream) getCOSObject()).createInputStream();
+        }
+        return null;
     }
 
     /**

@@ -49,8 +49,10 @@
     <module>pdfbox</module>
     <module>preflight</module>
     <module>preflight-app</module>
+    <module>debugger</module>
     <module>tools</module>
     <module>app</module>
+    <module>debugger-app</module>
     <module>examples</module>
   </modules>
 
@@ -72,6 +74,7 @@
         <plugins>
           <plugin>
             <artifactId>maven-assembly-plugin</artifactId>
+            <version>2.6</version>
             <executions>
               <execution>
                 <goals>
@@ -89,6 +92,7 @@
           </plugin>
           <plugin>
             <artifactId>maven-antrun-plugin</artifactId>
+            <version>1.8</version>
             <executions>
               <execution>
                 <goals>
@@ -106,8 +110,11 @@
                         <include name="pdfbox/target/*-${project.version}.jar*" />
                         <include name="xmpbox/target/*-${project.version}.jar*" />
                         <include name="preflight/target/*-${project.version}.jar*" />
+                        <include name="debugger/target/*-${project.version}.jar*" />
+                        <include name="tools/target/*-${project.version}.jar*" />
                         <include name="app/target/*-${project.version}.jar*" />
                         <include name="preflight-app/target/*-${project.version}.jar*" />
+                        <include name="debugger-app/target/*-${project.version}.jar*" />
                       </fileset>
                     </copy>
                     <checksum algorithm="MD5" fileext=".md5">
@@ -130,7 +137,7 @@ Subject: [VOTE] Release Apache PDFBox ${project.version}
 
 A candidate for the PDFBox ${project.version} release is available at:
 
-    http://people.apache.org/~${username}/pdfbox/${project.version}/
+    https://dist.apache.org/repos/dist/dev/pdfbox/${project.version}/
 
 The release candidate is a zip archive of the sources in:
 

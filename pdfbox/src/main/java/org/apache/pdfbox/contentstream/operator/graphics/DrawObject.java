@@ -18,11 +18,13 @@ package org.apache.pdfbox.contentstream.operator.graphics;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.pdfbox.contentstream.operator.MissingOperandException;
 
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.MissingResourceException;
 import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
+import org.apache.pdfbox.pdmodel.graphics.form.PDTransparencyGroup;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.pdmodel.graphics.PDXObject;
 import org.apache.pdfbox.contentstream.operator.Operator;
@@ -38,7 +40,16 @@ public final class DrawObject extends GraphicsOperatorProcessor
     @Override
     public void process(Operator operator, List<COSBase> operands) throws IOException
     {
-        COSName objectName = (COSName)operands.get(0);
+        if (operands.size() < 1)
+        {
+            throw new MissingOperandException(operator, operands);
+        }
+        COSBase base0 = operands.get(0);
+        if (!(base0 instanceof COSName))
+        {
+            return;
+        }
+        COSName objectName = (COSName) base0;
         PDXObject xobject = context.getResources().getXObject(objectName);
 
         if (xobject == null)
@@ -50,18 +61,13 @@ public final class DrawObject extends GraphicsOperatorProcessor
             PDImageXObject image = (PDImageXObject)xobject;
             context.drawImage(image);
         }
+        else if (xobject instanceof PDTransparencyGroup)
+        {
+            getContext().showTransparencyGroup((PDTransparencyGroup) xobject);
+        }
         else if (xobject instanceof PDFormXObject)
         {
-            PDFormXObject form = (PDFormXObject) xobject;
-            if (form.getGroup() != null &&
-                COSName.TRANSPARENCY.equals(form.getGroup().getSubType()))
-            {
-                getContext().showTransparencyGroup(form);
-            }
-            else
-            {
-                getContext().showForm(form);
-            }
+            getContext().showForm((PDFormXObject) xobject);
         }
     }
 

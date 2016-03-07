@@ -32,7 +32,7 @@ import org.apache.pdfbox.multipdf.Splitter;
  *
  * @author Ben Litchfield
  */
-public class PDFSplit
+public final class PDFSplit
 {
     private static final String PASSWORD = "-password";
     private static final String SPLIT = "-split";
@@ -48,9 +48,9 @@ public class PDFSplit
      *
      * @param args Command line arguments, should be one and a reference to a file.
      *
-     * @throws Exception If there is an error parsing the document.
+     * @throws IOException If there is an error parsing the document.
      */
-    public static void main( String[] args ) throws Exception
+    public static void main( String[] args ) throws IOException
     {
         // suppress the Dock icon on OS X
         System.setProperty("apple.awt.UIElement", "true");
@@ -59,7 +59,7 @@ public class PDFSplit
         split.split( args );
     }
 
-    private void split( String[] args ) throws Exception
+    private void split( String[] args ) throws IOException
     {
         String password = "";
         String split = null;
@@ -221,14 +221,16 @@ public class PDFSplit
      */
     private static void usage()
     {
-        System.err.println( "Usage: java -jar pdfbox-app-x.y.z.jar PDFSplit [OPTIONS] <PDF file>\n" +
-            "  -password  <password>  Password to decrypt document\n" +
-            "  -split     <integer>   split after this many pages (default 1, if startPage and endPage are unset)\n"+
-            "  -startPage <integer>   start page\n" +
-            "  -endPage   <integer>   end page\n" +
-            "  -outputPrefix <output prefix>  Filename prefix for image files\n" +    
-            "  <PDF file>             The PDF document to use\n"
-            );
+        String message = "Usage: java -jar pdfbox-app-x.y.z.jar PDFSplit [options] <inputfile>\n"
+                + "\nOptions:\n"
+                + "  -password  <password>  : Password to decrypt document\n"
+                + "  -split     <integer>   : split after this many pages (default 1, if startPage and endPage are unset)\n"
+                + "  -startPage <integer>   : start page\n"
+                + "  -endPage   <integer>   : end page\n"
+                + "  -outputPrefix <prefix> : Filename prefix for splitted files\n"
+                + "  <inputfile>            : The PDF document to use\n";
+        
+        System.err.println(message);
         System.exit( 1 );
     }
 }

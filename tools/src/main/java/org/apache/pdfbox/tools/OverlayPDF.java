@@ -16,6 +16,7 @@
  */
 package org.apache.pdfbox.tools;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -23,6 +24,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.pdfbox.multipdf.Overlay;
 import org.apache.pdfbox.multipdf.Overlay.Position;
+import org.apache.pdfbox.pdmodel.PDDocument;
 
 /**
  * 
@@ -31,7 +33,7 @@ import org.apache.pdfbox.multipdf.Overlay.Position;
  * Based on code contributed by Balazs Jerk. 
  * 
  */
-public class OverlayPDF 
+public final class OverlayPDF 
 {
     private static final Log LOG = LogFactory.getLog(OverlayPDF.class);
 
@@ -44,17 +46,22 @@ public class OverlayPDF
     private static final String PAGE = "-page";
     private static final String USEALLPAGES = "-useAllPages";
 
+    private OverlayPDF()
+    {
+    }    
+    
     /**
      * This will overlay a document and write out the results.
      *
      * @param args command line arguments
-     * @throws Exception if something went wrong
+     * @throws IOException if something went wrong
      */
-    public static void main(final String[] args) throws Exception 
+    public static void main(final String[] args) throws IOException
     {
         // suppress the Dock icon on OS X
         System.setProperty("apple.awt.UIElement", "true");
 
+        String outputFilename = null;
         Overlay overlayer = new Overlay();
         Map<Integer, String> specificPageOverlayFile = new HashMap<Integer, String>();
         // input arguments
@@ -67,7 +74,7 @@ public class OverlayPDF
             } 
             else if (i == (args.length - 1)) 
             {
-                overlayer.setOutputFile(arg);
+                outputFilename = arg;
             } 
             else if (arg.equals(POSITION) && ((i + 1) < args.length)) 
             {
@@ -125,16 +132,18 @@ public class OverlayPDF
             }
         }
         
-        if (overlayer.getInputFile() == null || overlayer.getOutputFile() == null) 
+        if (overlayer.getInputFile() == null || outputFilename == null) 
         {
             usage();
         }
         
         try 
         {
-            overlayer.overlay(specificPageOverlayFile);
+            PDDocument result = overlayer.overlay(specificPageOverlayFile);
+            result.save(outputFilename);
+            result.close();
         } 
-        catch (Exception e) 
+        catch (IOException e) 
         {
             LOG.error("Overlay failed: " + e.getMessage(), e);
             throw e;
@@ -143,22 +152,23 @@ public class OverlayPDF
 
     private static void usage()
     {
-        StringBuilder message = new StringBuilder();
-        message.append("usage: java -jar pdfbox-app-x.y.z.jar OverlayPDF <input.pdf> [OPTIONS] <output.pdf>\n");
-        message.append("  <input.pdf>                                        input file\n");
-        message.append("  <defaultOverlay.pdf>                               default overlay file\n");
-        message.append("  -odd <oddPageOverlay.pdf>                          overlay file used for odd pages\n");
-        message.append("  -even <evenPageOverlay.pdf>                        overlay file used for even pages\n");
-        message.append("  -first <firstPageOverlay.pdf>                      overlay file used for the first page\n");
-        message.append("  -last <lastPageOverlay.pdf>                        overlay file used for the last page\n");
-        message.append("  -useAllPages <allPagesOverlay.pdf>                 overlay file used for overlay, all pages"
-                + " are used by simply repeating them\n");
-        message.append("  -page <pageNumber> <specificPageOverlay.pdf>       overlay file used for " +
-                "the given page number, may occur more than once\n");
-        message.append("  -position foreground|background                    where to put the overlay " +
-                "file: foreground or background\n");
-        message.append("  <output.pdf>                                       output file\n");
-        System.err.println(message.toString());
+        String message = "Usage: java -jar pdfbox-app-x.y.z.jar OverlayPDF <inputfile> [options] <outputfile>\n"
+                + "\nOptions:\n"
+                + "  <inputfile>                                  : input file\n"
+                + "  <defaultOverlay.pdf>                         : default overlay file\n"
+                + "  -odd <oddPageOverlay.pdf>                    : overlay file used for odd pages\n"
+                + "  -even <evenPageOverlay.pdf>                  : overlay file used for even pages\n"
+                + "  -first <firstPageOverlay.pdf>                : overlay file used for the first page\n"
+                + "  -last <lastPageOverlay.pdf>                  : overlay file used for the last page\n"
+                + "  -useAllPages <allPagesOverlay.pdf>           : overlay file used for overlay, all pages"
+                + " are used by simply repeating them\n"
+                + "  -page <pageNumber> <specificPageOverlay.pdf> : overlay file used for "
+                + "the given page number, may occur more than once\n"
+                + "  -position foreground|background              : where to put the overlay "
+                + "file: foreground or background\n"
+                + "  <outputfile>                                 : output file";
+
+        System.err.println(message);
         System.exit( 1 );
     }
 

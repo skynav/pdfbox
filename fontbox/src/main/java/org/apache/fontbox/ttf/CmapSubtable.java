@@ -41,7 +41,7 @@ public class CmapSubtable
     private int platformEncodingId;
     private long subTableOffset;
     private int[] glyphIdToCharacterCode;
-    private final Map<Integer, Integer> characterCodeToGlyphId = new HashMap<Integer, Integer>();
+    private Map<Integer, Integer> characterCodeToGlyphId;
 
     /**
      * This will read the required data from the stream.
@@ -137,6 +137,7 @@ public class CmapSubtable
         }
 
         glyphIdToCharacterCode = newGlyphIdToCharacterCode(numGlyphs);
+        characterCodeToGlyphId = new HashMap<Integer, Integer>(numGlyphs);
         // -- Read all sub header
         for (long i = 0; i < nbGroups; ++i)
         {
@@ -226,6 +227,7 @@ public class CmapSubtable
     {
         long nbGroups = data.readUnsignedInt();
         glyphIdToCharacterCode = newGlyphIdToCharacterCode(numGlyphs);
+        characterCodeToGlyphId = new HashMap<Integer, Integer>(numGlyphs);
         for (long i = 0; i < nbGroups; ++i)
         {
             long firstCode = data.readUnsignedInt();
@@ -277,6 +279,7 @@ public class CmapSubtable
     protected void processSubtype13(TTFDataStream data, int numGlyphs) throws IOException
     {
         long nbGroups = data.readUnsignedInt();
+        characterCodeToGlyphId = new HashMap<Integer, Integer>(numGlyphs);
         for (long i = 0; i < nbGroups; ++i)
         {
             long firstCode = data.readUnsignedInt();
@@ -344,12 +347,24 @@ public class CmapSubtable
     {
         int firstCode = data.readUnsignedShort();
         int entryCount = data.readUnsignedShort();
-        glyphIdToCharacterCode = newGlyphIdToCharacterCode(numGlyphs);
+        // skip emtpy tables
+        if (entryCount == 0)
+        {
+            return;
+        }
+        Map<Integer, Integer> tmpGlyphToChar = new HashMap<Integer, Integer>(numGlyphs);
+        characterCodeToGlyphId = new HashMap<Integer, Integer>(numGlyphs);
         int[] glyphIdArray = data.readUnsignedShortArray(entryCount);
         for (int i = 0; i < entryCount; i++)
         {
-            glyphIdToCharacterCode[glyphIdArray[i]] = firstCode + i;
+            tmpGlyphToChar.put(glyphIdArray[i], firstCode + i);
             characterCodeToGlyphId.put((firstCode + i), glyphIdArray[i]);
+        }
+        glyphIdToCharacterCode = newGlyphIdToCharacterCode(Collections.max(tmpGlyphToChar.keySet()) + 1);
+        for (Entry<Integer, Integer> entry : tmpGlyphToChar.entrySet())
+        {
+            // link the glyphId with the right character code
+            glyphIdToCharacterCode[entry.getKey()] = entry.getValue();
         }
     }
 
@@ -373,7 +388,8 @@ public class CmapSubtable
         int[] idDelta = data.readUnsignedShortArray(segCount);
         int[] idRangeOffset = data.readUnsignedShortArray(segCount);
 
-        Map<Integer, Integer> tmpGlyphToChar = new HashMap<Integer, Integer>();
+        Map<Integer, Integer> tmpGlyphToChar = new HashMap<Integer, Integer>(numGlyphs);
+        characterCodeToGlyphId = new HashMap<Integer, Integer>(numGlyphs);
 
         long currentPosition = data.getCurrentPosition();
 
@@ -464,6 +480,7 @@ public class CmapSubtable
         }
         long startGlyphIndexOffset = data.getCurrentPosition();
         glyphIdToCharacterCode = newGlyphIdToCharacterCode(numGlyphs);
+        characterCodeToGlyphId = new HashMap<Integer, Integer>(numGlyphs);
         for (int i = 0; i <= maxSubHeaderIndex; ++i)
         {
             SubHeader sh = subHeaders[i];
@@ -488,8 +505,14 @@ public class CmapSubtable
                 {
                     p = (p + idDelta) % 65536;
                 }
-                if (glyphIdToCharacterCode[p] == -1)
-                    glyphIdToCharacterCode[p] = charCode;
+                
+                if (p >= numGlyphs)
+                {
+                    LOG.warn("glyphId " + p + " for charcode " + charCode + " ignored, numGlyphs is " + numGlyphs);
+                    continue;
+                }
+                
+                glyphIdToCharacterCode[p] = charCode;
                 characterCodeToGlyphId.put(charCode, p);
             }
         }
@@ -505,6 +528,7 @@ public class CmapSubtable
     {
         byte[] glyphMapping = data.read(256);
         glyphIdToCharacterCode = newGlyphIdToCharacterCode(256);
+        characterCodeToGlyphId = new HashMap<Integer, Integer>(glyphMapping.length);
         for (int i = 0; i < glyphMapping.length; i++)
         {
             int glyphIndex = (glyphMapping[i] + 256) % 256;

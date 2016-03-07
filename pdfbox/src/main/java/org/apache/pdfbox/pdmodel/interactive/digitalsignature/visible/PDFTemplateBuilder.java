@@ -96,7 +96,7 @@ public interface PDFTemplateBuilder
             throws IOException;
 
     /**
-     * Creates SingatureRectangle.
+     * Creates SignatureRectangle.
      * 
      * @param signatureField
      * @param properties
@@ -122,7 +122,7 @@ public interface PDFTemplateBuilder
      * 
      * @param params
      */
-    void createFormaterRectangle(byte[] params);
+    void createFormatterRectangle(byte[] params);
 
     /**
      * 
@@ -180,7 +180,7 @@ public interface PDFTemplateBuilder
      * @param innerForm
      * @param holderFormResources
      */
-    void insertInnerFormToHolerResources(PDFormXObject innerForm,
+    void insertInnerFormToHolderResources(PDFormXObject innerForm,
             PDResources holderFormResources);
 
     /**

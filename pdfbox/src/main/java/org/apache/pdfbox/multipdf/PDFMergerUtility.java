@@ -36,6 +36,7 @@ import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.cos.COSNumber;
 import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.cos.COSString;
+import org.apache.pdfbox.io.MemoryUsageSetting;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentCatalog;
 import org.apache.pdfbox.pdmodel.PDDocumentInformation;
@@ -44,7 +45,6 @@ import org.apache.pdfbox.pdmodel.PDDocumentNameDictionary;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.PageMode;
-import org.apache.pdfbox.pdmodel.common.COSArrayList;
 import org.apache.pdfbox.pdmodel.common.PDNumberTreeNode;
 import org.apache.pdfbox.pdmodel.common.PDStream;
 import org.apache.pdfbox.pdmodel.documentinterchange.logicalstructure.PDMarkInfo;
@@ -66,6 +66,7 @@ public class PDFMergerUtility
     private static final String STRUCTURETYPE_DOCUMENT = "Document";
 
     private final List<InputStream> sources;
+    private final List<FileInputStream> fileInputStreams;
     private String destinationFileName;
     private OutputStream destinationStream;
     private boolean ignoreAcroFormErrors = false;
@@ -76,6 +77,7 @@ public class PDFMergerUtility
     public PDFMergerUtility()
     {
         sources = new ArrayList<InputStream>();
+        fileInputStreams = new ArrayList<FileInputStream>();
     }
 
     /**
@@ -95,7 +97,7 @@ public class PDFMergerUtility
      */
     public void setDestinationFileName(String destination)
     {
-        this.destinationFileName = destination;
+        destinationFileName = destination;
     }
 
     /**
@@ -127,7 +129,7 @@ public class PDFMergerUtility
      */
     public void addSource(String source) throws FileNotFoundException
     {
-        sources.add(new FileInputStream(new File(source)));
+        addSource(new File(source));
     }
 
     /**
@@ -139,7 +141,9 @@ public class PDFMergerUtility
      */
     public void addSource(File source) throws FileNotFoundException
     {
-        sources.add(new FileInputStream(source));
+        FileInputStream stream = new FileInputStream(source);
+        sources.add(stream);
+        fileInputStreams.add(stream);
     }
 
     /**
@@ -167,27 +171,32 @@ public class PDFMergerUtility
      * Merge the list of source documents, saving the result in the destination
      * file.
      *
-     * @param useScratchFiles enables the usage of a scratch file if set to true
+     * @param memUsageSetting defines how memory is used for buffering PDF streams;
+     *                        in case of <code>null</code> unrestricted main memory is used 
+     * 
      * @throws IOException If there is an error saving the document.
      */
-    public void mergeDocuments(boolean useScratchFiles) throws IOException
+    public void mergeDocuments(MemoryUsageSetting memUsageSetting) throws IOException
     {
         PDDocument destination = null;
         InputStream sourceFile;
         PDDocument source;
         if (sources != null && sources.size() > 0)
         {
-            ArrayList<PDDocument> tobeclosed = new ArrayList<PDDocument>();
+            List<PDDocument> tobeclosed = new ArrayList<PDDocument>();
 
             try
             {
+                MemoryUsageSetting partitionedMemSetting = memUsageSetting != null ? 
+                        memUsageSetting.getPartitionedCopy(sources.size()+1) :
+                        MemoryUsageSetting.setupMainMemoryOnly();
                 Iterator<InputStream> sit = sources.iterator();
-                destination = new PDDocument(useScratchFiles);
+                destination = new PDDocument(partitionedMemSetting);
 
                 while (sit.hasNext())
                 {
                     sourceFile = sit.next();
-                    source = PDDocument.load(sourceFile, useScratchFiles);
+                    source = PDDocument.load(sourceFile, partitionedMemSetting);
                     tobeclosed.add(source);
                     appendDocument(destination, source);
                 }
@@ -209,6 +218,10 @@ public class PDFMergerUtility
                 for (PDDocument doc : tobeclosed)
                 {
                     doc.close();
+                }
+                for (FileInputStream stream : fileInputStreams)
+                {
+                    stream.close();
                 }
             }
         }
@@ -232,14 +245,6 @@ public class PDFMergerUtility
         if (destination.getDocument().isClosed())
         {
             throw new IOException("Error: destination PDF is closed.");
-        }
-        if (destination.isEncrypted())
-        {
-            throw new IOException("Error: destination PDF is encrypted, can't append encrypted PDF documents.");
-        }
-        if (source.isEncrypted())
-        {
-            throw new IOException("Error: source PDF is encrypted, can't append encrypted PDF documents.");
         }
 
         PDDocumentCatalog destCatalog = destination.getDocumentCatalog();
@@ -407,9 +412,8 @@ public class PDFMergerUtility
         COSStream srcMetadata = (COSStream) srcCatalog.getCOSObject().getDictionaryObject(COSName.METADATA);
         if (destMetadata == null && srcMetadata != null)
         {
-            PDStream newStream = new PDStream(destination, srcMetadata.getUnfilteredStream(), false);
-            newStream.getStream().mergeInto(srcMetadata);
-            newStream.addCompression();
+            PDStream newStream = new PDStream(destination, srcMetadata.createInputStream(), (COSName) null);
+            newStream.getCOSObject().mergeInto(srcMetadata);
             destCatalog.getCOSObject().setItem(COSName.METADATA, newStream);
         }
 
@@ -536,24 +540,39 @@ public class PDFMergerUtility
     private void mergeAcroForm(PDFCloneUtility cloner, PDAcroForm destAcroForm, PDAcroForm srcAcroForm)
             throws IOException
     {
-        List<PDField> srcFields = srcAcroForm.getFields();
+
+    	List<PDField> srcFields = srcAcroForm.getFields();
+
         if (srcFields != null)
         {
-            List<COSDictionary> destFields = new ArrayList<COSDictionary>();
-            // fixme: we're only iterating over the root fields, names of kids aren't being checked
-            for (PDField srcField : srcFields)
+        	// if a form is merged multiple times using PDFBox the newly generated
+        	// fields starting with dummyFieldName may already exist. We need to determine the last unique 
+        	// number used and increment that.
+        	final String prefix = "dummyFieldName";
+        	final int prefixLength = prefix.length();
+
+            for (PDField destField : destAcroForm.getFieldTree())
+            {
+            	String fieldName = destField.getPartialName();
+            	if (fieldName.startsWith(prefix))
+            	{
+            		nextFieldNum = Math.max(nextFieldNum, Integer.parseInt(fieldName.substring(prefixLength, fieldName.length()))+1);
+            	}
+            }
+        	
+            COSArray destFields = (COSArray) destAcroForm.getCOSObject().getItem(COSName.FIELDS);
+            for (PDField srcField : srcAcroForm.getFieldTree())
             {
                 COSDictionary dstField = (COSDictionary) cloner.cloneForNewDocument(srcField.getCOSObject());
                 // if the form already has a field with this name then we need to rename this field
                 // to prevent merge conflicts.
                 if (destAcroForm.getField(srcField.getFullyQualifiedName()) != null)
                 {
-                    dstField.setString(COSName.T, "dummyFieldName" + nextFieldNum++);
+                    dstField.setString(COSName.T, prefix + nextFieldNum++);
                 }
                 destFields.add(dstField);
             }
-            destAcroForm.getCOSObject().setItem(COSName.FIELDS,
-                                                COSArrayList.converterToCOSArray(destFields));
+            destAcroForm.getCOSObject().setItem(COSName.FIELDS,destFields);
         }
     }
 
@@ -674,5 +693,4 @@ public class PDFMergerUtility
     {
         return acroForm != null && acroForm.xfaIsDynamic();
     }
-
 }

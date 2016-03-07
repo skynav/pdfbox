@@ -30,8 +30,12 @@ import org.apache.pdfbox.util.Matrix;
 /**
  * Example to show superimposing a PDF page onto another PDF.
  */
-public class SuperimposePage
+public final class SuperimposePage
 {
+    
+    private SuperimposePage()
+    {
+    }
 
     public static void main(String[] args) throws IOException
     {
@@ -67,7 +71,6 @@ public class SuperimposePage
             // Create a Form XObject from the source document using LayerUtility
             LayerUtility layerUtility = new LayerUtility(doc);
             PDFormXObject form = layerUtility.importPageAsForm(sourceDoc, sourcePage - 1);
-            form.getPDStream().addCompression(); // use gzip for data
             
             // draw the full form
             contents.drawForm(form);

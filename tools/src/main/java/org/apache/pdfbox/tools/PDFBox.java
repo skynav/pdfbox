@@ -16,6 +16,7 @@
  */
 package org.apache.pdfbox.tools;
 
+import org.apache.pdfbox.debugger.PDFDebugger;
 
 /**
  * Simple wrapper around all the command line utilities included in PDFBox.
@@ -23,9 +24,13 @@ package org.apache.pdfbox.tools;
  *
  * @see <a href="https://issues.apache.org/jira/browse/PDFBOX-687">PDFBOX-687</a>
  */
-public class PDFBox 
+public final class PDFBox 
 {
 
+    private PDFBox()
+    {
+    }
+    
     /**
      * Main method.
      * 
@@ -77,7 +82,7 @@ public class PDFBox
             }
             else if (command.equals("PDFReader"))
             {
-                PDFReader.main(arguments);
+                PDFDebugger.main(arguments);
                 exitAfterCallingMain = false;
             }
             else if (command.equals("PDFSplit"))
@@ -113,23 +118,25 @@ public class PDFBox
 
     private static void showMessageAndExit() 
     {
-        System.err.println("PDFBox version: \""+ Version.getVersion()+ "\"");
-        System.err.println("\nUsage: java pdfbox-app-x.y.z.jar <command> <args..>");
-        System.err.println("\nPossible commands are:\n");
-        System.err.println("  ConvertColorspace");
-        System.err.println("  Decrypt");
-        System.err.println("  Encrypt"); 
-        System.err.println("  ExtractText"); 
-        System.err.println("  ExtractImages"); 
-        System.err.println("  OverlayPDF"); 
-        System.err.println("  PrintPDF");
-        System.err.println("  PDFDebugger"); 
-        System.err.println("  PDFMerger");
-        System.err.println("  PDFReader");
-        System.err.println("  PDFSplit");
-        System.err.println("  PDFToImage"); 
-        System.err.println("  TextToPDF");
-        System.err.println("  WriteDecodedDoc"); 
+        String message = "PDFBox version: \""+ Version.getVersion()+ "\""
+                + "\nUsage: java -jar pdfbox-app-x.y.z.jar <command> <args..>\n"
+                + "\nPossible commands are:\n"
+                + "  ConvertColorspace\n"
+                + "  Decrypt\n"
+                + "  Encrypt\n"
+                + "  ExtractText\n"
+                + "  ExtractImages\n"
+                + "  OverlayPDF\n"
+                + "  PrintPDF\n"
+                + "  PDFDebugger\n"
+                + "  PDFMerger\n"
+                + "  PDFReader\n"
+                + "  PDFSplit\n"
+                + "  PDFToImage\n"
+                + "  TextToPDF\n"
+                + "  WriteDecodedDoc";
+        
+        System.err.println(message);
         System.exit(1);
     }
 }

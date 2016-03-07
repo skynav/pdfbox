@@ -45,9 +45,10 @@ public class GlyfSimpleDescript extends GlyfDescript
      * 
      * @param numberOfContours number of contours
      * @param bais the stream to be read
+     * @param x0 the initial X-position
      * @throws IOException is thrown if something went wrong
      */
-    public GlyfSimpleDescript(short numberOfContours, TTFDataStream bais) throws IOException
+    public GlyfSimpleDescript(short numberOfContours, TTFDataStream bais, short x0) throws IOException
     {
         super(numberOfContours, bais);
 
@@ -65,8 +66,15 @@ public class GlyfSimpleDescript extends GlyfDescript
         // Simple glyph description
         endPtsOfContours = bais.readUnsignedShortArray(numberOfContours);
 
+        int lastEndPt = endPtsOfContours[numberOfContours - 1];
+        if (numberOfContours == 1 && lastEndPt == 65535)
+        {
+            // PDFBOX-2939: assume an empty glyph
+            pointCount = 0;
+            return;
+        }
         // The last end point index reveals the total number of points
-        pointCount = endPtsOfContours[numberOfContours - 1] + 1;
+        pointCount = lastEndPt + 1;
 
         flags = new byte[pointCount];
         xCoordinates = new short[pointCount];
@@ -75,7 +83,7 @@ public class GlyfSimpleDescript extends GlyfDescript
         int instructionCount = bais.readUnsignedShort();
         readInstructions(bais, instructionCount);
         readFlags(pointCount, bais);
-        readCoords(pointCount, bais);
+        readCoords(pointCount, bais, x0);
     }
 
     /**
@@ -135,9 +143,9 @@ public class GlyfSimpleDescript extends GlyfDescript
     /**
      * The table is stored as relative values, but we'll store them as absolutes.
      */
-    private void readCoords(int count, TTFDataStream bais) throws IOException
+    private void readCoords(int count, TTFDataStream bais, short x0) throws IOException
     {
-        short x = 0;
+        short x = x0;
         short y = 0;
         for (int i = 0; i < count; i++)
         {

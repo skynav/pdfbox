@@ -25,15 +25,16 @@ import org.apache.pdfbox.cos.COSName;
  */
 final class PDFieldFactory
 {
-    private PDFieldFactory()
-    {
-    }
-    
+
     private static final String FIELD_TYPE_TEXT = "Tx";
     private static final String FIELD_TYPE_BUTTON = "Btn";
     private static final String FIELD_TYPE_CHOICE = "Ch";
     private static final String FIELD_TYPE_SIGNATURE = "Sig";
-
+    
+    private PDFieldFactory()
+    {
+    }
+    
     /**
      * Creates a COSField subclass from the given field.
      *
@@ -61,9 +62,14 @@ final class PDFieldFactory
         {
             return createButtonSubType(form, field, parent);
         }
-        else
+        else if (field.containsKey(COSName.KIDS))
         {
             return new PDNonTerminalField(form, field, parent);
+        }
+        else
+        {
+            // an erroneous non-field object, see PDFBOX-2885
+            return null;
         }
     }
 
@@ -98,7 +104,7 @@ final class PDFieldFactory
         }
         else
         {
-            return new PDCheckbox(form, field, parent);
+            return new PDCheckBox(form, field, parent);
         }
     }
 

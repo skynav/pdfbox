@@ -524,20 +524,21 @@ public class TrueTypeFont implements FontBoxFont, Closeable
 
     private synchronized void readPostScriptNames() throws IOException
     {
-        if (postScriptNames == null)
+        if (postScriptNames == null && getPostScript() != null)
         {
-            postScriptNames = new HashMap<String, Integer>();
-            if (getPostScript() != null)
+            String[] names = getPostScript().getGlyphNames();
+            if (names != null)
             {
-                String[] names = getPostScript().getGlyphNames();
-                if (names != null)
+                postScriptNames = new HashMap<String, Integer>(names.length);
+                for (int i = 0; i < names.length; i++)
                 {
-                    for (int i = 0; i < names.length; i++)
-                    {
-                        postScriptNames.put(names[i], i);
-                    }
+                    postScriptNames.put(names[i], i);
                 }
             }
+            else
+            {
+                postScriptNames = new HashMap<String, Integer>();
+            }                    
         }
     }
 
@@ -564,7 +565,14 @@ public class TrueTypeFont implements FontBoxFont, Closeable
         CmapTable cmapTable = getCmap();
         if (cmapTable == null)
         {
-            return null;
+            if (isStrict)
+            {
+                throw new IOException("The TrueType font does not contain a 'cmap' table");
+            }
+            else
+            {
+                return null;
+            }
         }
 
         CmapSubtable cmap = cmapTable.getSubtable(CmapTable.PLATFORM_UNICODE,

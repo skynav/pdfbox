@@ -26,22 +26,27 @@ import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 
 /**
- * Creates a simple document with a Type 1 font (.afm + .pfb).
+ * Creates a simple document with a Type 1 font (.pfb).
  */
-public class HelloWorldType1
+public final class HelloWorldType1
 {
+
+    private HelloWorldType1()
+    {
+    }
+    
     public static void main(String[] args) throws IOException
     {
         if (args.length != 3)
         {
             System.err.println("usage: " + HelloWorldType1.class.getName() +
-                    " <output-file> <Message> <afm-file>");
+                    " <output-file> <Message> <pfb-file>");
             System.exit(1);
         }
 
         String file = args[0];
         String message = args[1];
-        String afmPath = args[2];
+        String pfbPath = args[2];
         
         PDDocument doc = new PDDocument();
         try
@@ -49,8 +54,7 @@ public class HelloWorldType1
             PDPage page = new PDPage();
             doc.addPage(page);
 
-            PDFont font = new PDType1Font(doc, new FileInputStream(afmPath),
-                    new FileInputStream(afmPath.replace(".afm", ".pfb")));
+            PDFont font = new PDType1Font(doc, new FileInputStream(pfbPath));
 
             PDPageContentStream contents = new PDPageContentStream(doc, page);
             contents.beginText();

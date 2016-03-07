@@ -59,10 +59,8 @@ public class DateType extends AbstractSimpleProperty
 
     /**
      * Set property value
-     * 
-     * @param value
-     *            the new Calendar element value
-     * @throws InappropriateTypeException
+     *
+     * @param value the new Calendar element value
      */
     private void setValueFromCalendar(Calendar value)
     {
@@ -119,6 +117,11 @@ public class DateType extends AbstractSimpleProperty
     {
         if (!isGoodType(value))
         {
+            if (value == null)
+            {
+                throw new IllegalArgumentException(
+                        "Value null is not allowed for the Date type");
+            }
             throw new IllegalArgumentException(
                     "Value given is not allowed for the Date type: " 
                             + value.getClass() + ", value: " + value);

@@ -81,9 +81,16 @@ public class Type1CharStringParser
             if (b0 == CALLSUBR)
             {
                 // callsubr command
-                Integer operand=(Integer)sequence.remove(sequence.size()-1);
+                Object obj = sequence.remove(sequence.size() - 1);
+                if (!(obj instanceof Integer))
+                {
+                    LOG.warn("Parameter " + obj + " for CALLSUBR is ignored, integer expected in glyph '"
+                            + glyphName + "' of font " + fontName);
+                    continue;
+                }
+                Integer operand = (Integer) obj;
 
-                if (operand < subrs.size())
+                if (operand >= 0 && operand < subrs.size())
                 {
                     byte[] subrBytes = subrs.get(operand);
                     parse(subrBytes, subrs, sequence);
@@ -130,8 +137,7 @@ public class Type1CharStringParser
                     // all remaining othersubrs use this fallback mechanism
                     for (int i = 0; i < numArgs; i++)
                     {
-                        Integer arg = removeInteger(sequence);
-                        results.push(arg);
+                        results.push(removeInteger(sequence));
                     }
                 }
 
@@ -140,8 +146,7 @@ public class Type1CharStringParser
                 {
                     input.readByte(); // B0_POP
                     input.readByte(); // B1_POP
-                    Integer val = results.pop();
-                    sequence.add(val);
+                    sequence.add(results.pop());
                 }
 
                 if (results.size() > 0)
@@ -214,12 +219,7 @@ public class Type1CharStringParser
         } 
         else if (b0 == 255)
         {
-            int b1 = input.readUnsignedByte();
-            int b2 = input.readUnsignedByte();
-            int b3 = input.readUnsignedByte();
-            int b4 = input.readUnsignedByte();
-
-            return b1 << 24 | b2 << 16 | b3 << 8 | b4;
+            return input.readInt();
         } 
         else
         {

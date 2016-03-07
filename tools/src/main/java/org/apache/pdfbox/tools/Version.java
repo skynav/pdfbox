@@ -21,7 +21,7 @@ package org.apache.pdfbox.tools;
  *
  * @author Ben Litchfield
  */
-class Version
+final class Version
 {
     private Version()
     {
@@ -69,6 +69,7 @@ class Version
      */
     private static void usage()
     {
-        System.err.println( "usage: " + Version.class.getName() );
+        System.err.println("Usage: " + Version.class.getName());
+        System.exit(1);
     }
 }

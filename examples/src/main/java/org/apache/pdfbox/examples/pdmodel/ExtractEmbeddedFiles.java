@@ -35,11 +35,9 @@ import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationFileAttachme
 
 /**
  * This is an example on how to extract all embedded files from a PDF document.
- * <p>
- * Usage: java org.apache.pdfbox.examples.pdmodel.ExtractEmbeddedFiles &lt;input-pdf&gt;
  *
  */
-public class ExtractEmbeddedFiles
+public final class ExtractEmbeddedFiles
 {
     private ExtractEmbeddedFiles()
     {
@@ -50,9 +48,9 @@ public class ExtractEmbeddedFiles
      *
      * @param args The command line arguments.
      *
-     * @throws Exception If there is an error parsing the document.
+     * @throws IOException If there is an error parsing the document.
      */
-    public static void main( String[] args ) throws Exception
+    public static void main( String[] args ) throws IOException
     {
         if( args.length != 1 )
         {
@@ -136,7 +134,7 @@ public class ExtractEmbeddedFiles
         try
         {
             fos = new FileOutputStream(file);
-            fos.write(embeddedFile.getByteArray());
+            fos.write(embeddedFile.toByteArray());
         }
         finally
         {

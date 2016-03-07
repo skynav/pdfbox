@@ -21,17 +21,10 @@
 
 package org.apache.pdfbox.preflight.process.reflect;
 
-import static org.apache.pdfbox.preflight.PreflightConfiguration.EXTGSTATE_PROCESS;
-import static org.apache.pdfbox.preflight.PreflightConfiguration.FONT_PROCESS;
-import static org.apache.pdfbox.preflight.PreflightConfiguration.GRAPHIC_PROCESS;
-import static org.apache.pdfbox.preflight.PreflightConfiguration.SHADING_PATTERN_PROCESS;
-import static org.apache.pdfbox.preflight.PreflightConfiguration.TILING_PATTERN_PROCESS;
-
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSDocument;
@@ -40,14 +33,11 @@ import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDFontFactory;
+import org.apache.pdfbox.pdmodel.graphics.PDXObject;
 import org.apache.pdfbox.pdmodel.graphics.pattern.PDAbstractPattern;
 import org.apache.pdfbox.pdmodel.graphics.pattern.PDTilingPattern;
 import org.apache.pdfbox.pdmodel.graphics.shading.PDShading;
-import org.apache.pdfbox.pdmodel.graphics.PDXObject;
 import org.apache.pdfbox.preflight.PreflightConstants;
-import static org.apache.pdfbox.preflight.PreflightConstants.ERROR_GRAPHIC_INVALID_PATTERN_DEFINITION;
-import static org.apache.pdfbox.preflight.PreflightConstants.ERROR_GRAPHIC_MAIN;
-import static org.apache.pdfbox.preflight.PreflightConstants.TRANPARENCY_DICTIONARY_KEY_EXTGSTATE;
 import org.apache.pdfbox.preflight.PreflightContext;
 import org.apache.pdfbox.preflight.PreflightPath;
 import org.apache.pdfbox.preflight.ValidationResult.ValidationError;
@@ -55,6 +45,16 @@ import org.apache.pdfbox.preflight.exception.ValidationException;
 import org.apache.pdfbox.preflight.process.AbstractProcess;
 import org.apache.pdfbox.preflight.utils.COSUtils;
 import org.apache.pdfbox.preflight.utils.ContextHelper;
+
+
+import static org.apache.pdfbox.preflight.PreflightConfiguration.EXTGSTATE_PROCESS;
+import static org.apache.pdfbox.preflight.PreflightConfiguration.FONT_PROCESS;
+import static org.apache.pdfbox.preflight.PreflightConfiguration.GRAPHIC_PROCESS;
+import static org.apache.pdfbox.preflight.PreflightConfiguration.SHADING_PATTERN_PROCESS;
+import static org.apache.pdfbox.preflight.PreflightConfiguration.TILING_PATTERN_PROCESS;
+import static org.apache.pdfbox.preflight.PreflightConstants.ERROR_GRAPHIC_INVALID_PATTERN_DEFINITION;
+import static org.apache.pdfbox.preflight.PreflightConstants.ERROR_GRAPHIC_MAIN;
+import static org.apache.pdfbox.preflight.PreflightConstants.TRANPARENCY_DICTIONARY_KEY_EXTGSTATE;
 
 public class ResourcesValidationProcess extends AbstractProcess
 {
@@ -129,7 +129,7 @@ public class ResourcesValidationProcess extends AbstractProcess
                 }
                 catch (IOException e)
                 {
-                    addFontError((COSDictionary)font, context);
+                    addFontError((COSDictionary) font, context, e);
                 }
                 if (newFont != null)
                 {
@@ -138,68 +138,6 @@ public class ResourcesValidationProcess extends AbstractProcess
             }
         }
         return fonts;
-    }
-
-    /**
-     * PDFont loads embedded fonts in its constructor so we have to handle IOExceptions
-     * from PDFont and translate them into validation errors.
-     */
-    private void addFontError(COSDictionary dictionary, PreflightContext context)
-    {
-        COSName type = dictionary.getCOSName(COSName.TYPE, COSName.FONT);
-        if (!COSName.FONT.equals(type))
-        {
-            addValidationError(context, new ValidationError(PreflightConstants.ERROR_FONTS_UNKNOWN_FONT_TYPE,
-                    "Expected 'Font' dictionary but found '" + type.getName() + "'"));
-        }
-
-        String fontName = "Unknown";
-        if (dictionary.containsKey(COSName.BASE_FONT))
-        {
-            fontName = dictionary.getNameAsString(COSName.BASE_FONT);
-        }
-
-        COSName subType = dictionary.getCOSName(COSName.SUBTYPE);
-        if (COSName.TYPE1.equals(subType))
-        {
-            addValidationError(context, new ValidationError(PreflightConstants.ERROR_FONTS_TYPE1_DAMAGED,
-                    "The FontFile can't be read for " + fontName));
-        }
-        else if (COSName.MM_TYPE1.equals(subType))
-        {
-            addValidationError(context, new ValidationError(PreflightConstants.ERROR_FONTS_TYPE1_DAMAGED,
-                    "The FontFile can't be read for " + fontName));
-        }
-        else if (COSName.TRUE_TYPE.equals(subType))
-        {
-            addValidationError(context, new ValidationError(PreflightConstants.ERROR_FONTS_TRUETYPE_DAMAGED,
-                                        "The FontFile can't be read for " + fontName));
-        }
-        else if (COSName.TYPE3.equals(subType))
-        {
-            addValidationError(context, new ValidationError(PreflightConstants.ERROR_FONTS_TYPE3_DAMAGED,
-                    "The FontFile can't be read for " + fontName));
-        }
-        else if (COSName.TYPE0.equals(subType))
-        {
-            addValidationError(context, new ValidationError(PreflightConstants.ERROR_FONTS_CID_DAMAGED,
-                    "The FontFile can't be read for " + fontName));
-        }
-        else if (COSName.CID_FONT_TYPE0.equals(subType))
-        {
-            addValidationError(context, new ValidationError(PreflightConstants.ERROR_FONTS_UNKNOWN_FONT_TYPE,
-                    "Unexpected CIDFontType0 descendant font for " + fontName));
-        }
-        else if (COSName.CID_FONT_TYPE2.equals(subType))
-        {
-            addValidationError(context, new ValidationError(PreflightConstants.ERROR_FONTS_UNKNOWN_FONT_TYPE,
-                    "Unexpected CIDFontType2 descendant font for " + fontName));
-        }
-        else
-        {
-            addValidationError(context, new ValidationError(PreflightConstants.ERROR_FONTS_UNKNOWN_FONT_TYPE,
-                    "Unknown font type for " + fontName));
-        }
     }
 
     /**
@@ -283,7 +221,7 @@ public class ResourcesValidationProcess extends AbstractProcess
                     try
                     {
                         COSStream stream = COSUtils.getAsStream(xobj, cosDocument);
-                        PDXObject pdXObject = PDXObject.createXObject(stream, entry.getKey().getName(), resources);
+                        PDXObject pdXObject = PDXObject.createXObject(stream, resources);
                         if (pdXObject != null)
                         {
                             ContextHelper.validateElement(context, pdXObject, GRAPHIC_PROCESS);

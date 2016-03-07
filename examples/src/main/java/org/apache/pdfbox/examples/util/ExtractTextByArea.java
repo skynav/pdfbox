@@ -22,15 +22,14 @@ import org.apache.pdfbox.text.PDFTextStripperByArea;
 
 import java.awt.Rectangle;
 import java.io.File;
+import java.io.IOException;
 
 /**
  * This is an example on how to extract text from a specific area on the PDF document.
  *
- * Usage: java org.apache.pdfbox.examples.util.ExtractTextByArea &lt;input-pdf&gt;
- *
  * @author Ben Litchfield
  */
-public class ExtractTextByArea
+public final class ExtractTextByArea
 {
     private ExtractTextByArea()
     {
@@ -43,9 +42,9 @@ public class ExtractTextByArea
      *
      * @param args The command line arguments.
      *
-     * @throws Exception If there is an error parsing the document.
+     * @throws IOException If there is an error parsing the document.
      */
-    public static void main( String[] args ) throws Exception
+    public static void main( String[] args ) throws IOException
     {
         if( args.length != 1 )
         {
@@ -81,7 +80,7 @@ public class ExtractTextByArea
      */
     private static void usage()
     {
-        System.err.println( "Usage: java org.apache.pdfbox.examples.util.ExtractTextByArea <input-pdf>" );
+        System.err.println( "Usage: java " + ExtractTextByArea.class.getName() + " <input-pdf>" );
     }
 
 }

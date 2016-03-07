@@ -27,22 +27,15 @@ import java.awt.image.WritableRaster;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
-
+import javax.imageio.stream.ImageInputStream;
+import javax.imageio.stream.MemoryCacheImageInputStream;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.pdfbox.cos.COSArray;
+import org.apache.pdfbox.cos.COSNumber;
 import org.apache.pdfbox.io.IOUtils;
-import org.apache.pdfbox.io.RandomAccessBuffer;
-import org.apache.pdfbox.io.RandomAccessRead;
 import org.apache.pdfbox.pdmodel.graphics.color.PDColorSpace;
 import org.apache.pdfbox.pdmodel.graphics.color.PDIndexed;
-
-import javax.imageio.stream.ImageInputStream;
-import javax.imageio.stream.MemoryCacheImageInputStream;
-
-import org.apache.pdfbox.cos.COSNumber;
-import org.apache.pdfbox.pdmodel.common.PDMemoryStream;
-import org.apache.pdfbox.pdmodel.common.PDStream;
 
 /**
  * Reads a sampled image from a PDF file.
@@ -116,15 +109,7 @@ final class SampledImageReader
      */
     public static BufferedImage getRGBImage(PDImage pdImage, COSArray colorKey) throws IOException
     {
-        if (pdImage.getStream() instanceof PDMemoryStream)
-        {
-            // for inline images
-            if (pdImage.getStream().getLength() == 0)
-            {
-                throw new IOException("Image stream is empty");
-            }
-        }
-        else if (pdImage.getStream().getStream().getFilteredLength() == 0)
+        if (pdImage.isEmpty())
         {
             throw new IOException("Image stream is empty");
         }
@@ -176,7 +161,7 @@ final class SampledImageReader
         try
         {
             // create stream
-            iis = pdImage.getStream().createInputStream();
+            iis = pdImage.createInputStream();
             final boolean isIndexed = colorSpace instanceof PDIndexed;
 
             int rowLen = width / 8;
@@ -245,16 +230,7 @@ final class SampledImageReader
     private static BufferedImage from8bit(PDImage pdImage, WritableRaster raster)
             throws IOException
     {
-        RandomAccessRead input;
-        PDStream stream = pdImage.getStream();
-        if (stream instanceof PDMemoryStream)
-        {
-            input = new RandomAccessBuffer(stream.getByteArray());
-        }
-        else
-        {
-            input = stream.getStream().getUnfilteredRandomAccess();
-        }
+        InputStream input = pdImage.createInputStream();
         try
         {
             // get the raster's underlying byte buffer
@@ -297,7 +273,7 @@ final class SampledImageReader
         try
         {
             // create stream
-            iis = new MemoryCacheImageInputStream(pdImage.getStream().createInputStream());
+            iis = new MemoryCacheImageInputStream(pdImage.createInputStream());
             final float sampleMax = (float)Math.pow(2, bitsPerComponent) - 1f;
             final boolean isIndexed = colorSpace instanceof PDIndexed;
 

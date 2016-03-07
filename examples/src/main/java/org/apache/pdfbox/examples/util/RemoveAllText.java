@@ -16,6 +16,8 @@
  */
 package org.apache.pdfbox.examples.util;
 
+import java.io.OutputStream;
+import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdfparser.PDFStreamParser;
 import org.apache.pdfbox.pdfwriter.ContentStreamWriter;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -24,17 +26,16 @@ import org.apache.pdfbox.pdmodel.common.PDStream;
 import org.apache.pdfbox.contentstream.operator.Operator;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * This is an example on how to remove all text from PDF document.
  *
- * Usage: java org.apache.pdfbox.examples.util.RemoveAllText &lt;input-pdf&gt; &lt;output-pdf&gt;
- *
  * @author Ben Litchfield
  */
-public class RemoveAllText
+public final class RemoveAllText
 {
     /**
      * Default constructor.
@@ -49,9 +50,9 @@ public class RemoveAllText
      *
      * @param args The command line arguments.
      *
-     * @throws Exception If there is an error parsing the document.
+     * @throws IOException If there is an error parsing the document.
      */
-    public static void main( String[] args ) throws Exception
+    public static void main( String[] args ) throws IOException
     {
         if( args.length != 2 )
         {
@@ -70,7 +71,7 @@ public class RemoveAllText
                 }
                 for( PDPage page : document.getPages() )
                 {
-                    PDFStreamParser parser = new PDFStreamParser(page.getStream());
+                    PDFStreamParser parser = new PDFStreamParser(page);
                     parser.parse();
                     List<Object> tokens = parser.getTokens();
                     List<Object> newTokens = new ArrayList<Object>();
@@ -89,9 +90,10 @@ public class RemoveAllText
                         newTokens.add( token );
                     }
                     PDStream newContents = new PDStream( document );
-                    ContentStreamWriter writer = new ContentStreamWriter( newContents.createOutputStream() );
+                    OutputStream out = newContents.createOutputStream(COSName.FLATE_DECODE);
+                    ContentStreamWriter writer = new ContentStreamWriter( out );
                     writer.writeTokens( newTokens );
-                    newContents.addCompression();
+                    out.close();
                     page.setContents( newContents );
                 }
                 document.save( args[1] );
@@ -111,7 +113,7 @@ public class RemoveAllText
      */
     private static void usage()
     {
-        System.err.println( "Usage: java org.apache.pdfbox.examples.pdmodel.RemoveAllText <input-pdf> <output-pdf>" );
+        System.err.println( "Usage: java " + RemoveAllText.class.getName() + " <input-pdf> <output-pdf>" );
     }
 
 }

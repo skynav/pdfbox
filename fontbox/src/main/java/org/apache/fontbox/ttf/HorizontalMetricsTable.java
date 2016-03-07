@@ -114,4 +114,21 @@ public class HorizontalMetricsTable extends TTFTable
     {
         return advanceWidth;
     }
+    
+    /**
+     * Returns the left side bearing for the given GID.
+     *
+     * @param gid GID
+     */
+    public int getLeftSideBearing(int gid)
+    {
+        if (gid < numHMetrics)
+        {
+            return leftSideBearing[gid];
+        }
+        else
+        {
+            return nonHorizontalLeftSideBearing[gid - numHMetrics];
+        }
+   }
 }

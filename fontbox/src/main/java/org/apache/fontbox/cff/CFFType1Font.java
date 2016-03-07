@@ -114,22 +114,28 @@ public class CFFType1Font extends CFFFont implements EncodedFont
      * @param gid GID
      * @throws IOException if the charstring could not be read
      */
+    @Override
     public Type2CharString getType2CharString(int gid) throws IOException
     {
         String name = "GID+" + gid; // for debugging only
         return getType2CharString(gid, name);
     }
 
-    // Returns the Type 1 charstring for the given GID, with name for debugging
+    // Returns the Type 2 charstring for the given GID, with name for debugging
     private Type2CharString getType2CharString(int gid, String name) throws IOException
     {
         Type2CharString type2 = charStringCache.get(gid);
         if (type2 == null)
         {
-            byte[] bytes = charStrings.get(gid);
+            byte[] bytes = null;
+            if (gid < charStrings.length)
+            {
+                bytes = charStrings[gid];
+            }
             if (bytes == null)
             {
-                bytes = charStrings.get(0); // .notdef
+                // .notdef
+                bytes = charStrings[0];
             }
             Type2CharStringParser parser = new Type2CharStringParser(fontName, name);
             List<Object> type2seq = parser.parse(bytes, globalSubrIndex, getLocalSubrIndex());
@@ -186,9 +192,9 @@ public class CFFType1Font extends CFFFont implements EncodedFont
         this.encoding = encoding;
     }
 
-    private IndexData getLocalSubrIndex()
+    private byte[][] getLocalSubrIndex()
     {
-        return (IndexData)privateDict.get("Subrs");
+        return (byte[][])privateDict.get("Subrs");
     }
 
     // helper for looking up keys/values

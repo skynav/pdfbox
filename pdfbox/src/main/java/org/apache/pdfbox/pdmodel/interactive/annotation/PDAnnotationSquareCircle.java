@@ -17,6 +17,7 @@
 package org.apache.pdfbox.pdmodel.interactive.annotation;
 
 import org.apache.pdfbox.cos.COSArray;
+import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
@@ -169,6 +170,7 @@ public class PDAnnotationSquareCircle extends PDAnnotationMarkup
      * @param bs the border style dictionary to set. TODO not all annotations may have a BS entry
      *
      */
+    @Override
     public void setBorderStyle(PDBorderStyleDictionary bs)
     {
         this.getCOSObject().setItem(COSName.BS, bs);
@@ -179,17 +181,15 @@ public class PDAnnotationSquareCircle extends PDAnnotationMarkup
      *
      * @return the border style dictionary. TODO not all annotations may have a BS entry
      */
+    @Override
     public PDBorderStyleDictionary getBorderStyle()
     {
-        COSDictionary bs = (COSDictionary) this.getCOSObject().getItem(COSName.BS);
-        if (bs != null)
+        COSBase bs = getCOSObject().getDictionaryObject(COSName.BS);
+        if (bs instanceof COSDictionary)
         {
-            return new PDBorderStyleDictionary(bs);
+            return new PDBorderStyleDictionary((COSDictionary) bs);
         }
-        else
-        {
-            return null;
-        }
+        return null;
     }
 
 }

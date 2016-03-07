@@ -24,6 +24,8 @@ import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.apache.fontbox.ttf.TrueTypeFont;
 import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSInteger;
@@ -51,14 +53,14 @@ final class PDCIDFontType2Embedder extends TrueTypeEmbedder
      *
      * @param document parent document
      * @param dict font dictionary
-     * @param ttfStream TTF stream
+     * @param ttf True Type Font
      * @param parent parent Type 0 font
      * @throws IOException if the TTF could not be read
      */
-    PDCIDFontType2Embedder(PDDocument document, COSDictionary dict, InputStream ttfStream,
+    PDCIDFontType2Embedder(PDDocument document, COSDictionary dict, TrueTypeFont ttf,
                            boolean embedSubset, PDType0Font parent) throws IOException
     {
-        super(document, dict, ttfStream, embedSubset);
+        super(document, dict, ttf, embedSubset);
         this.document = document;
         this.dict = dict;
         this.parent = parent;
@@ -75,7 +77,7 @@ final class PDCIDFontType2Embedder extends TrueTypeEmbedder
         dict.setItem(COSName.DESCENDANT_FONTS, descendantFonts);
 
         // build GID -> Unicode map
-        gidToUni = new HashMap<Integer, Integer>();
+        gidToUni = new HashMap<Integer, Integer>(ttf.getMaximumProfile().getNumGlyphs());
         for (int gid = 1, max = ttf.getMaximumProfile().getNumGlyphs(); gid <= max; gid++)
         {
             // skip composite glyph components that have no code point
@@ -85,7 +87,6 @@ final class PDCIDFontType2Embedder extends TrueTypeEmbedder
                 gidToUni.put(gid, codePoint); // CID = GID
             }
         }
-
         // ToUnicode CMap
         buildToUnicodeCMap(null);
     }
@@ -98,7 +99,7 @@ final class PDCIDFontType2Embedder extends TrueTypeEmbedder
             throws IOException
     {
         // build CID2GIDMap, because the content stream has been written with the old GIDs
-        Map<Integer, Integer> cidToGid = new HashMap<Integer, Integer>();
+        Map<Integer, Integer> cidToGid = new HashMap<Integer, Integer>(gidToCid.size());
         for (Map.Entry<Integer, Integer> entry : gidToCid.entrySet())
         {
             int newGID = entry.getKey();
@@ -155,8 +156,7 @@ final class PDCIDFontType2Embedder extends TrueTypeEmbedder
         toUniWriter.writeTo(out);
         InputStream cMapStream = new ByteArrayInputStream(out.toByteArray());
 
-        PDStream stream = new PDStream(document, cMapStream, false);
-        stream.addCompression();
+        PDStream stream = new PDStream(document, cMapStream, COSName.FLATE_DECODE);
 
         // surrogate code points, requires PDF 1.5
         if (hasSurrogates)
@@ -236,9 +236,8 @@ final class PDCIDFontType2Embedder extends TrueTypeEmbedder
         }
 
         InputStream input = new ByteArrayInputStream(out.toByteArray());
-        PDStream stream = new PDStream(document, input, false);
-        stream.getStream().setInt(COSName.LENGTH1, stream.getByteArray().length);
-        stream.addCompression();
+        PDStream stream = new PDStream(document, input, COSName.FLATE_DECODE);
+        stream.getCOSObject().setInt(COSName.LENGTH1, stream.toByteArray().length);
 
         cidFont.setItem(COSName.CID_TO_GID_MAP, stream);
     }
@@ -256,8 +255,7 @@ final class PDCIDFontType2Embedder extends TrueTypeEmbedder
         }
 
         InputStream input = new ByteArrayInputStream(bytes);
-        PDStream stream = new PDStream(document, input);
-        stream.addCompression();
+        PDStream stream = new PDStream(document, input, COSName.FLATE_DECODE);
 
         fontDescriptor.setCIDSet(stream);
     }
@@ -419,6 +417,6 @@ final class PDCIDFontType2Embedder extends TrueTypeEmbedder
      */
     public PDCIDFont getCIDFont() throws IOException
     {
-        return PDFontFactory.createDescendantFont(cidFont, parent);
+        return new PDCIDFontType2(cidFont, parent, ttf);
     }
 }

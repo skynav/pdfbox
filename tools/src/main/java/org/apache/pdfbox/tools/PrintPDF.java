@@ -16,20 +16,21 @@
  */
 package org.apache.pdfbox.tools;
 
+import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
 import java.io.File;
+import java.io.IOException;
 
 import javax.print.PrintService;
-
 import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.printing.PDFPrinter;
+import org.apache.pdfbox.printing.PDFPageable;
 
 /**
  * This is a command line program that will print a PDF document.
  * 
  * @author Ben Litchfield
  */
-public class PrintPDF
+public final class PrintPDF
 {
     private static final String PASSWORD = "-password";
     private static final String SILENT = "-silentPrint";
@@ -47,10 +48,10 @@ public class PrintPDF
      * Infamous main method.
      * 
      * @param args Command line arguments, should be one and a reference to a file.
-     * 
-     * @throws Exception If there is an error parsing the document.
+     * @throws PrinterException if the specified service cannot support the Pageable and Printable interfaces.
+     * @throws IOException if there is an error parsing the file.
      */
-    public static void main(String[] args) throws Exception
+    public static void main(String[] args) throws PrinterException, IOException
     {
         // suppress the Dock icon on OS X
         System.setProperty("apple.awt.UIElement", "true");
@@ -115,15 +116,11 @@ public class PrintPDF
                     }
                 }
             }
-
-            PDFPrinter printer = new PDFPrinter(document);
-            if (silentPrint)
+            printJob.setPageable(new PDFPageable(document));
+            
+            if (silentPrint || printJob.printDialog())
             {
-                printer.silentPrint(printJob);
-            }
-            else
-            {
-                printer.print(printJob);
+                printJob.print();
             }
         }
         finally
@@ -140,9 +137,12 @@ public class PrintPDF
      */
     private static void usage()
     {
-        System.err.println("Usage: java -jar pdfbox-app-x.y.z.jar PrintPDF [OPTIONS] <PDF file>\n"
-                + "  -password  <password>        Password to decrypt document\n"
-                + "  -silentPrint                 Print without prompting for printer info\n");
+        String message = "Usage: java -jar pdfbox-app-x.y.z.jar PrintPDF [options] <inputfile>\n"
+                + "\nOptions:\n"
+                + "  -password  <password> : Password to decrypt document\n"
+                + "  -silentPrint          : Print without prompting for printer info\n";
+        
+        System.err.println(message);
         System.exit(1);
     }
 }

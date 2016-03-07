@@ -29,8 +29,6 @@ import java.util.Calendar;
 /**
  * This is an example on how to get a documents metadata information.
  *
- * Usage: java org.apache.pdfbox.examples.pdmodel.PrintDocumentMetaData &lt;input-pdf&gt;
- *
  * @author Ben Litchfield
  * 
  */
@@ -41,9 +39,9 @@ public class PrintDocumentMetaData
      *
      * @param args The command line arguments.
      *
-     * @throws Exception If there is an error parsing the document.
+     * @throws IOException If there is an error parsing the document.
      */
-    public static void main( String[] args ) throws Exception
+    public static void main( String[] args ) throws IOException
     {
         if( args.length != 1 )
         {
@@ -73,7 +71,7 @@ public class PrintDocumentMetaData
      */
     private static void usage()
     {
-        System.err.println( "Usage: java org.apache.pdfbox.examples.pdmodel.PrintDocumentMetaData <input-pdf>" );
+        System.err.println( "Usage: java " + PrintDocumentMetaData.class.getName() + " <input-pdf>" );
     }
 
     /**
@@ -100,7 +98,8 @@ public class PrintDocumentMetaData
         System.out.println( "Trapped=" + info.getTrapped() );
         if( metadata != null )
         {
-            System.out.println( "Metadata=" + metadata.getInputStreamAsString() );
+            String string =  new String( metadata.toByteArray(), "ISO-8859-1" );
+            System.out.println( "Metadata=" + string );
         }
     }
 

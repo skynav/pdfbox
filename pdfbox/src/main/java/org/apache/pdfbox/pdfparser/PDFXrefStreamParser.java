@@ -20,6 +20,7 @@ import java.io.IOException;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSBase;
@@ -43,18 +44,18 @@ public class PDFXrefStreamParser extends BaseParser
     /**
      * Constructor.
      *
-     * @param strm The stream to parse.
-     * @param doc The document for the current parsing.
+     * @param stream The stream to parse.
+     * @param document The document for the current parsing.
      * @param resolver resolver to read the xref/trailer information
      *
      * @throws IOException If there is an error initializing the stream.
      */
-    public PDFXrefStreamParser(COSStream strm, COSDocument doc, XrefTrailerResolver resolver )
+    public PDFXrefStreamParser(COSStream stream, COSDocument document, XrefTrailerResolver resolver)
             throws IOException
     {
-        super(strm.getUnfilteredRandomAccess());
-        document = doc;
-        stream = strm;
+        super(new InputStreamSource(stream.createInputStream()));
+        this.stream = stream;
+        this.document = document;
         this.xrefTrailerResolver = resolver;
     }
 
@@ -64,7 +65,13 @@ public class PDFXrefStreamParser extends BaseParser
      */
     public void parse() throws IOException
     {
-        COSArray xrefFormat = (COSArray)stream.getDictionaryObject(COSName.W);
+        COSBase w = stream.getDictionaryObject(COSName.W);
+        if (!(w instanceof COSArray))
+        {
+            throw new IOException("/W array is missing in Xref stream");
+        }
+        COSArray xrefFormat = (COSArray) w;
+        
         COSArray indexArray = (COSArray)stream.getDictionaryObject(COSName.INDEX);
         /*
          * If Index doesn't exist, we will use the default values.
@@ -76,7 +83,7 @@ public class PDFXrefStreamParser extends BaseParser
             indexArray.add(stream.getDictionaryObject(COSName.SIZE));
         }
 
-        ArrayList<Long> objNums = new ArrayList<Long>();
+        List<Long> objNums = new ArrayList<Long>();
 
         /*
          * Populates objNums with all object numbers available
@@ -100,19 +107,29 @@ public class PDFXrefStreamParser extends BaseParser
         int w2 = xrefFormat.getInt(2);
         int lineSize = w0 + w1 + w2;
 
-        while(pdfSource.available() > 0 && objIter.hasNext())
+        while(!seqSource.isEOF() && objIter.hasNext())
         {
             byte[] currLine = new byte[lineSize];
-            pdfSource.read(currLine);
+            seqSource.read(currLine);
 
-            int type = 0;
-            /*
-             * Grabs the number of bytes specified for the first column in
-             * the W array and stores it.
-             */
-            for(int i = 0; i < w0; i++)
+            int type;            
+            if (w0 == 0)
             {
-                type += (currLine[i] & 0x00ff) << ((w0 - i - 1)* 8);
+                // "If the first element is zero, 
+                // the type field shall not be present, and shall default to type 1"
+                type = 1;
+            }
+            else
+            {
+                type = 0;
+                /*
+                 * Grabs the number of bytes specified for the first column in
+                 * the W array and stores it.
+                 */
+                for (int i = 0; i < w0; i++)
+                {
+                    type += (currLine[i] & 0x00ff) << ((w0 - i - 1) * 8);
+                }
             }
             //Need to remember the current objID
             Long objID = objIter.next();

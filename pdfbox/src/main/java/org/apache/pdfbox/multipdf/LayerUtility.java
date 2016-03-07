@@ -36,6 +36,7 @@ import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.common.PDStream;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.PDPageContentStream.AppendMode;
 import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
 import org.apache.pdfbox.pdmodel.graphics.optionalcontent.PDOptionalContentGroup;
 import org.apache.pdfbox.pdmodel.graphics.optionalcontent.PDOptionalContentProperties;
@@ -81,16 +82,15 @@ public class LayerUtility
      */
     public void wrapInSaveRestore(PDPage page) throws IOException
     {
-        COSDictionary saveGraphicsStateDic = new COSDictionary();
-        COSStream saveGraphicsStateStream = getDocument().getDocument().createCOSStream(saveGraphicsStateDic);
-        OutputStream saveStream = saveGraphicsStateStream.createUnfilteredStream();
+        COSStream saveGraphicsStateStream = getDocument().getDocument().createCOSStream();
+        OutputStream saveStream = saveGraphicsStateStream.createOutputStream();
         saveStream.write("q\n".getBytes("ISO-8859-1"));
-        saveStream.flush();
+        saveStream.close();
 
-        COSStream restoreGraphicsStateStream = getDocument().getDocument().createCOSStream(saveGraphicsStateDic);
-        OutputStream restoreStream = restoreGraphicsStateStream.createUnfilteredStream();
+        COSStream restoreGraphicsStateStream = getDocument().getDocument().createCOSStream();
+        OutputStream restoreStream = restoreGraphicsStateStream.createOutputStream();
         restoreStream.write("Q\n".getBytes("ISO-8859-1"));
-        restoreStream.flush();
+        restoreStream.close();
 
         //Wrap the existing page's content in a save/restore pair (q/Q) to have a controlled
         //environment to add additional content.
@@ -147,9 +147,7 @@ public class LayerUtility
      */
     public PDFormXObject importPageAsForm(PDDocument sourceDoc, PDPage page) throws IOException
     {
-        COSStream pageStream = (COSStream)page.getStream().getCOSObject();
-        PDStream newStream = new PDStream(targetDoc,
-                pageStream.getUnfilteredStream(), false);
+        PDStream newStream = new PDStream(targetDoc, page.getContents(), COSName.FLATE_DECODE);
         PDFormXObject form = new PDFormXObject(newStream);
 
         //Copy resources
@@ -159,7 +157,7 @@ public class LayerUtility
         form.setResources(formRes);
 
         //Transfer some values from page to form
-        transferDict(page.getCOSObject(), form.getCOSStream(), PAGE_TO_FORM_FILTER, true);
+        transferDict(page.getCOSObject(), form.getCOSObject(), PAGE_TO_FORM_FILTER, true);
 
         Matrix matrix = form.getMatrix();
         AffineTransform at = matrix.createAffineTransform();
@@ -241,7 +239,7 @@ public class LayerUtility
         ocprops.addGroup(layer);
 
         PDPageContentStream contentStream = new PDPageContentStream(
-                targetDoc, targetPage, true, !DEBUG);
+                targetDoc, targetPage, AppendMode.APPEND, !DEBUG);
         contentStream.beginMarkedContent(COSName.OC, layer);
         contentStream.saveGraphicsState();
         contentStream.transform(new Matrix(transform));

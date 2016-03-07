@@ -43,11 +43,9 @@ import org.apache.pdfbox.contentstream.PDFGraphicsStreamEngine;
 /**
  * Extracts the images from a PDF file.
  *
- * <p>usage: java org.apache.pdfbox.tools.ExtractImages &lt;pdffile&gt; &lt;password&gt; [imageprefix]
- *
  * @author Ben Litchfield
  */
-public class ExtractImages
+public final class ExtractImages
 {
     private static final String PASSWORD = "-password";
     private static final String PREFIX = "-prefix";
@@ -71,9 +69,9 @@ public class ExtractImages
      * Entry point for the application.
      *
      * @param args The command-line arguments.
-     * @throws Exception If there is an error decrypting the document.
+     * @throws IOException if there is an error reading the file or extracting the images.
      */
-    public static void main(String[] args) throws Exception
+    public static void main(String[] args) throws IOException
     {
         // suppress the Dock icon on OS X
         System.setProperty("apple.awt.UIElement", "true");
@@ -82,7 +80,7 @@ public class ExtractImages
         extractor.run(args);
     }
 
-    private void run(String[] args) throws Exception
+    private void run(String[] args) throws IOException
     {
         if (args.length < 1 || args.length > 4)
         {
@@ -145,12 +143,15 @@ public class ExtractImages
      */
     private static void usage()
     {
-        System.err.println("Usage: java org.apache.pdfbox.tools.ExtractImages [OPTIONS] <PDF file>\n" +
-                "  -password  <password>        Password to decrypt document\n" +
-                "  -prefix  <image-prefix>      Image prefix(default to pdf name)\n" +
-                "  -directJPEG                  Forces the direct extraction of JPEG images "
-                + "regardless of colorspace\n" +
-                "  <PDF file>                   The PDF document to use\n");
+        String message = "Usage: java " + ExtractImages.class.getName() + " [options] <inputfile>\n"
+                + "\nOptions:\n"
+                + "  -password <password>   : Password to decrypt document\n"
+                + "  -prefix <image-prefix> : Image prefix(default to pdf name)\n"
+                + "  -directJPEG            : Forces the direct extraction of JPEG images "
+                + "regardless of colorspace\n"
+                + "  <inputfile>            : The PDF document to use\n";
+        
+        System.err.println(message);
         System.exit(1);
     }
 
@@ -200,12 +201,12 @@ public class ExtractImages
             if (pdImage instanceof PDImageXObject)
             {
                 PDImageXObject xobject = (PDImageXObject)pdImage;
-                if (seen.contains(xobject.getCOSStream()))
+                if (seen.contains(xobject.getCOSObject()))
                 {
                     // skip duplicate image
                     return;
                 }
-                seen.add(xobject.getCOSStream());
+                seen.add(xobject.getCOSObject());
             }
 
             // save image
@@ -319,7 +320,7 @@ public class ExtractImages
                                       PDDeviceRGB.INSTANCE.getName().equals(colorSpaceName))
                     {
                         // RGB or Gray colorspace: get and write the unmodifiedJPEG stream
-                        InputStream data = pdImage.getStream().getPartiallyFilteredStream(JPEG);
+                        InputStream data = pdImage.createInputStream(JPEG);
                         IOUtils.copy(data, out);
                         IOUtils.closeQuietly(data);
                     }

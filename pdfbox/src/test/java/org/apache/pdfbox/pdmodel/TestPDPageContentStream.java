@@ -20,8 +20,8 @@ import java.io.IOException;
 import junit.framework.TestCase;
 import org.apache.pdfbox.contentstream.operator.Operator;
 import org.apache.pdfbox.cos.COSFloat;
-import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.pdfparser.PDFStreamParser;
+import org.apache.pdfbox.pdmodel.PDPageContentStream.AppendMode;
 
 /**
  * @author Yegor Kozlov
@@ -35,14 +35,13 @@ public class TestPDPageContentStream extends TestCase
         PDPage page = new PDPage();
         doc.addPage(page);
 
-        PDPageContentStream contentStream = new PDPageContentStream(doc, page, false, true);
+        PDPageContentStream contentStream = new PDPageContentStream(doc, page, AppendMode.OVERWRITE, true);
         // pass a non-stroking color in CMYK color space
         contentStream.setNonStrokingColor(0.1f, 0.2f, 0.3f, 0.4f);
         contentStream.close();
 
         // now read the PDF stream and verify that the CMYK values are correct
-        COSStream stream = page.getStream().getStream();
-        PDFStreamParser parser = new PDFStreamParser(stream);
+        PDFStreamParser parser = new PDFStreamParser(page);
         parser.parse();
         java.util.List<Object>  pageTokens = parser.getTokens();
         // expected five tokens :
@@ -61,14 +60,13 @@ public class TestPDPageContentStream extends TestCase
         page = new PDPage();
         doc.addPage(page);
 
-        contentStream = new PDPageContentStream(doc, page, false, false);
+        contentStream = new PDPageContentStream(doc, page, AppendMode.OVERWRITE, false);
         // pass a non-stroking color in CMYK color space
         contentStream.setStrokingColor(0.5f, 0.6f, 0.7f, 0.8f);
         contentStream.close();
 
         // now read the PDF stream and verify that the CMYK values are correct
-        stream = page.getStream().getStream();
-        parser = new PDFStreamParser(stream);
+        parser = new PDFStreamParser(page);
         parser.parse();
         pageTokens = parser.getTokens();
         // expected five tokens  :

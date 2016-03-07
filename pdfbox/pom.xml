@@ -35,7 +35,11 @@
         The Apache PDFBox library is an open source Java tool for working with PDF documents.
     </description>
     <inceptionYear>2002</inceptionYear>
-
+    
+    <properties>
+    	<git.scmJavadocUrl>git:https://git-wip-us.apache.org/repos/asf/pdfbox-docs//content/docs/${project.version}/javadocs</git.scmJavadocUrl>
+    </properties>
+    
     <dependencies>
         <dependency>
             <groupId>org.apache.pdfbox</groupId>
@@ -61,7 +65,13 @@
             <artifactId>junit</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- For legal reasons (incompatible license), these two dependencies 
+        <dependency>
+            <groupId>com.googlecode.java-diff-utils</groupId>
+            <artifactId>diffutils</artifactId>
+            <version>1.3.0</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- For legal reasons (incompatible license), these three dependencies below
         are to be used only in the tests and may not be distributed. 
         See also LEGAL-195 -->
         <dependency>
@@ -70,8 +80,13 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>net.java.dev.jai-imageio</groupId>
-            <artifactId>jai-imageio-core-standalone</artifactId>
+            <groupId>com.github.jai-imageio</groupId>
+            <artifactId>jai-imageio-core</artifactId>
+            <scope>test</scope>
+        </dependency>    
+        <dependency>
+            <groupId>com.github.jai-imageio</groupId>
+            <artifactId>jai-imageio-jpeg2000</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -99,7 +114,6 @@
                 <configuration>
                     <argLine>-Xmx768m</argLine>
                     <excludes>
-                        <exclude>org/apache/pdfbox/TestAll.java</exclude>
                         <exclude>org/apache/pdfbox/rendering/TestPDFToImage.java</exclude>
                     </excludes>
                     <systemPropertyVariables>
@@ -130,14 +144,32 @@
                         <exclude>src/main/resources/org/apache/pdfbox/resources/icc/*</exclude>
                         <exclude>src/main/resources/org/apache/pdfbox/resources/glyphlist/glyphlist.txt</exclude>
                         <exclude>src/main/resources/org/apache/pdfbox/resources/glyphlist/zapfdingbats.txt</exclude>
+                        <exclude>src/main/resources/org/apache/pdfbox/resources/text/BidiMirroring.txt</exclude>
                         <exclude>src/main/resources/META-INF/services/*</exclude>
                         <exclude>src/test/resources/input/rendering/*.ai</exclude>
+                        <exclude>src/test/resources/input/*.txt</exclude>
                         <exclude>src/test/resources/output/*</exclude>
                         <exclude>release.properties</exclude>
                         <exclude>src/test/resources/org/apache/pdfbox/encryption/*.der</exclude>
                         <exclude>src/test/resources/org/apache/pdfbox/encryption/*.pfx</exclude>
                         <exclude>src/test/resources/org/apache/pdfbox/filter/*.bin</exclude>
                     </excludes>
+                </configuration>
+            </plugin>
+            <!-- 
+            	Publish Javadoc to Apache CMS
+            	After completion log in to https://cms.apache.org/pdfbox/publish 
+            	and click on the Submit button to commit to production.
+             -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-scm-publish-plugin</artifactId>
+                <configuration>
+                    <content>${project.reporting.outputDirectory}/apidocs</content>
+                    <pubScmUrl>scm:${git.scmJavadocUrl}</pubScmUrl>
+                    <tryUpdate>true</tryUpdate>
+                    <checkoutDirectory>${svn.scmJavadocCheckoutDirectory}</checkoutDirectory>
+                    <serverId>pdfbox-site</serverId>
                 </configuration>
             </plugin>
         </plugins>

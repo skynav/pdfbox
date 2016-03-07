@@ -108,7 +108,7 @@ public final class LosslessFactory
         PDImage xAlpha = createAlphaFromARGBImage(document, image);
         if (xAlpha != null)
         {
-            pdImage.getCOSStream().setItem(COSName.SMASK, xAlpha);
+            pdImage.getCOSObject().setItem(COSName.SMASK, xAlpha);
         }
 
         return pdImage;
@@ -128,10 +128,10 @@ public final class LosslessFactory
     private static PDImageXObject createAlphaFromARGBImage(PDDocument document, BufferedImage image)
             throws IOException
     {
-        // this implementation makes the assumption that the raster uses 
-        // SinglePixelPackedSampleModel, i.e. the values can be used 1:1 for
+        // this implementation makes the assumption that the raster values can be used 1:1 for
         // the stream. 
-        // Sadly the type of the databuffer is TYPE_INT and not TYPE_BYTE.
+        // Sadly the type of the databuffer is usually TYPE_INT and not TYPE_BYTE so we can't just
+        // save it directly
         if (!image.getColorModel().hasAlpha())
         {
             return null;
@@ -146,8 +146,8 @@ public final class LosslessFactory
         }
 
         int[] pixels = alphaRaster.getPixels(0, 0,
-                alphaRaster.getSampleModel().getWidth(),
-                alphaRaster.getSampleModel().getHeight(),
+                alphaRaster.getWidth(),
+                alphaRaster.getHeight(),
                 (int[]) null);
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         int bpc;
@@ -155,7 +155,7 @@ public final class LosslessFactory
         {
             bpc = 1;
             MemoryCacheImageOutputStream mcios = new MemoryCacheImageOutputStream(bos);
-            int width = alphaRaster.getSampleModel().getWidth();
+            int width = alphaRaster.getWidth();
             int p = 0;
             for (int pixel : pixels)
             {
@@ -253,8 +253,8 @@ public final class LosslessFactory
         Filter filter = FilterFactory.INSTANCE.getFilter(COSName.FLATE_DECODE);
         filter.encode(new ByteArrayInputStream(byteArray), baos, new COSDictionary(), 0);
 
-        ByteArrayInputStream filteredByteStream = new ByteArrayInputStream(baos.toByteArray());
-        return new PDImageXObject(document, filteredByteStream, COSName.FLATE_DECODE, 
+        ByteArrayInputStream encodedByteStream = new ByteArrayInputStream(baos.toByteArray());
+        return new PDImageXObject(document, encodedByteStream, COSName.FLATE_DECODE, 
                 width, height, bitsPerComponent, initColorSpace);
     }
 

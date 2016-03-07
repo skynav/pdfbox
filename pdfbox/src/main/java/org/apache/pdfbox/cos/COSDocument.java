@@ -17,12 +17,12 @@
 package org.apache.pdfbox.cos;
 
 import java.io.Closeable;
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.pdfbox.io.ScratchFile;
@@ -59,6 +59,11 @@ public class COSDocument extends COSBase implements Closeable
         new HashMap<COSObjectKey, Long>();
 
     /**
+     * List containing all streams which are created when creating a new pdf. 
+     */
+    private final List<COSStream> streams = new ArrayList<COSStream>();
+    
+    /**
      * Document trailer dictionary.
      */
     private COSDictionary trailer;
@@ -79,47 +84,23 @@ public class COSDocument extends COSBase implements Closeable
     private ScratchFile scratchFile;
 
     /**
-     * Constructor.
-     *
-     * @param useScratchFiles enables the usage of a scratch file if set to true
-     *                     
-     */
-    public COSDocument(boolean useScratchFiles)
-    {
-        this(null, useScratchFiles);
-    }
-
-    /**
-     * Constructor that will use a temporary file in the given directory
-     * for storage of the PDF streams. The temporary file is automatically
-     * removed when this document gets closed.
-     *
-     * @param scratchDir directory for the temporary file,
-     *                   or <code>null</code> to use the system default
-     * @param useScratchFiles enables the usage of a scratch file if set to true
-     * 
-     */
-    public COSDocument(File scratchDir, boolean useScratchFiles)
-    {
-        if (useScratchFiles)
-        {
-            try 
-            {
-                scratchFile = new ScratchFile(scratchDir);
-            }
-            catch (IOException e)
-            {
-                LOG.error("Can't create temp file, using memory buffer instead", e);
-            }
-        }
-    }
-
-    /**
-     * Constructor. Uses memory to store stream.
+     * Constructor. Uses main memory to buffer PDF streams.
      */
     public COSDocument()
     {
-        this(false);
+        this(ScratchFile.getMainMemoryOnlyInstance());
+    }
+
+    /**
+     * Constructor that will use the provide memory handler for storage of the
+     * PDF streams.
+     *
+     * @param scratchFile memory handler for buffering of PDF streams
+     * 
+     */
+    public COSDocument(ScratchFile scratchFile)
+    {
+        this.scratchFile = scratchFile;
     }
 
     /**
@@ -129,19 +110,29 @@ public class COSDocument extends COSBase implements Closeable
      */
     public COSStream createCOSStream()
     {
-        return new COSStream(scratchFile);
+        COSStream stream = new COSStream(scratchFile);
+        // collect all COSStreams so that they can be closed when closing the COSDocument.
+        // This is limited to newly created pdfs as all COSStreams of an existing pdf are
+        // collected within the map objectPool
+        streams.add(stream);
+        return stream;
     }
 
     /**
      * Creates a new COSStream using the current configuration for scratch files.
+     * Not for public use. Only COSParser should call this method.
      *
      * @param dictionary the corresponding dictionary
-     * 
      * @return the new COSStream
      */
     public COSStream createCOSStream(COSDictionary dictionary)
     {
-        return new COSStream( dictionary, scratchFile );
+        COSStream stream = new COSStream(scratchFile);
+        for (Map.Entry<COSName, COSBase> entry : dictionary.entrySet())
+        {
+            stream.setItem(entry.getKey(), entry.getValue());
+        }
+        return stream;
     }
 
     /**
@@ -152,7 +143,7 @@ public class COSDocument extends COSBase implements Closeable
      * @return This will return an object with the specified type.
      * @throws IOException If there is an error getting the object
      */
-    public COSObject getObjectByType( COSName type ) throws IOException
+    public COSObject getObjectByType(COSName type) throws IOException
     {
         for( COSObject object : objectPool.values() )
         {
@@ -451,7 +442,13 @@ public class COSDocument extends COSBase implements Closeable
                     }
                 }
             }
-
+            if (streams != null)
+            {
+                for(COSStream stream : streams)
+                {
+                    stream.close();
+                }
+            }
             if (scratchFile != null)
             {
                 scratchFile.close();

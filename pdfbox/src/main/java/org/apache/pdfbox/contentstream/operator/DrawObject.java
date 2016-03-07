@@ -20,7 +20,7 @@ import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.graphics.PDXObject;
 import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
-import org.apache.pdfbox.text.PDFMarkedContentExtractor;
+import org.apache.pdfbox.pdmodel.graphics.form.PDTransparencyGroup;
 
 import java.io.IOException;
 import java.util.List;
@@ -36,16 +36,32 @@ public class DrawObject extends OperatorProcessor
     @Override
     public void process(Operator operator, List<COSBase> arguments) throws IOException
     {
-        COSName name = (COSName) arguments.get(0);
-        PDXObject xobject =  context.getResources().getXObject(name);
-        if (context instanceof PDFMarkedContentExtractor)
+        if (arguments.size() < 1)
         {
-            ((PDFMarkedContentExtractor) context).xobject(xobject);
+            throw new MissingOperandException(operator, arguments);
         }
-
-        if(xobject instanceof PDFormXObject)
+        COSBase base0 = arguments.get(0);
+        if (!(base0 instanceof COSName))
         {
-            PDFormXObject form = (PDFormXObject)xobject;
+            return;
+        }
+        COSName name = (COSName) base0;
+
+        if (context.getResources().isImageXObject(name))
+        {
+            // we're done here, don't decode images when doing text extraction
+            return;
+        }
+        
+        PDXObject xobject = context.getResources().getXObject(name);
+
+        if (xobject instanceof PDTransparencyGroup)
+        {
+            context.showTransparencyGroup((PDTransparencyGroup) xobject);
+        }
+        else if (xobject instanceof PDFormXObject)
+        {
+            PDFormXObject form = (PDFormXObject) xobject;
             context.showForm(form);
         }
     }

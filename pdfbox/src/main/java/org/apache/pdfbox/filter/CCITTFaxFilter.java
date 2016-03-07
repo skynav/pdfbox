@@ -19,8 +19,6 @@ package org.apache.pdfbox.filter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.filter.ccitt.CCITTFaxG31DDecodeInputStream;
@@ -38,8 +36,6 @@ import org.apache.pdfbox.io.IOUtils;
  */
 final class CCITTFaxFilter extends Filter
 {
-    private static final Log LOG = LogFactory.getLog(CCITTFaxFilter.class);
-
     @Override
     public DecodeResult decode(InputStream encoded, OutputStream decoded,
                                          COSDictionary parameters, int index) throws IOException
@@ -128,6 +124,6 @@ final class CCITTFaxFilter extends Filter
     protected void encode(InputStream input, OutputStream encoded, COSDictionary parameters)
             throws IOException
     {
-        LOG.warn("CCITTFaxDecode.encode is not implemented yet, skipping this stream.");
+        throw new UnsupportedOperationException("CCITTFaxFilter encoding not implemented, use the CCITTFactory methods instead");
     }
 }

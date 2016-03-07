@@ -18,7 +18,10 @@ package org.apache.pdfbox.multipdf;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+
 import junit.framework.TestCase;
+
+import org.apache.pdfbox.io.MemoryUsageSetting;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;
 
@@ -45,6 +48,8 @@ public class PDFMergerUtilityTest extends TestCase
             throw new IOException("could not create output directory");
         }
     }
+    
+    
 
     /**
      * Tests whether the merge of two PDF files with identically named but
@@ -61,22 +66,58 @@ public class PDFMergerUtilityTest extends TestCase
         checkMergeIdentical("PDFBox.GlobalResourceMergeTest.Doc01.decoded.pdf",
                 "PDFBox.GlobalResourceMergeTest.Doc02.decoded.pdf",
                 "GlobalResourceMergeTestResult.pdf", 
-                false);
+                MemoryUsageSetting.setupMainMemoryOnly());
         
         // once again, with scratch file
         checkMergeIdentical("PDFBox.GlobalResourceMergeTest.Doc01.decoded.pdf",
                 "PDFBox.GlobalResourceMergeTest.Doc02.decoded.pdf",
                 "GlobalResourceMergeTestResult2.pdf", 
-                true);
+                MemoryUsageSetting.setupTempFileOnly());
+    }
+
+    /**
+     * Tests whether the merge of two PDF files with JPEG and CCITT works. A few revisions before
+     * 1704911 this test failed because the clone utility attempted to decode and re-encode the
+     * streams, see PDFBOX-2893 on 23.9.2015.
+     *
+     * @throws IOException if something goes wrong.
+     */
+    public void testJpegCcitt() throws IOException
+    {
+        checkMergeIdentical("jpegrgb.pdf",
+                "multitiff.pdf",
+                "JpegMultiMergeTestResult.pdf",
+                MemoryUsageSetting.setupMainMemoryOnly());
+
+        // once again, with scratch file
+        checkMergeIdentical("jpegrgb.pdf",
+                "multitiff.pdf",
+                "JpegMultiMergeTestResult.pdf",
+                MemoryUsageSetting.setupTempFileOnly());
+    }
+
+    // see PDFBOX-2893
+    public void testPDFMergerUtility2() throws IOException
+    {
+        checkMergeIdentical("PDFBox.GlobalResourceMergeTest.Doc01.pdf",
+                "PDFBox.GlobalResourceMergeTest.Doc02.pdf",
+                "GlobalResourceMergeTestResult.pdf",
+                MemoryUsageSetting.setupMainMemoryOnly());
+
+        // once again, with scratch file
+        checkMergeIdentical("PDFBox.GlobalResourceMergeTest.Doc01.pdf",
+                "PDFBox.GlobalResourceMergeTest.Doc02.pdf",
+                "GlobalResourceMergeTestResult2.pdf",
+                MemoryUsageSetting.setupTempFileOnly());
     }
 
     // checks that the result file of a merge has the same rendering as the two
     // source files
     private void checkMergeIdentical(String filename1, String filename2, String mergeFilename, 
-            boolean useScratchFiles)
+            MemoryUsageSetting memUsageSetting)
             throws IOException
     {
-        PDDocument srcDoc1 = PDDocument.load(new File(SRCDIR, filename1), null);
+        PDDocument srcDoc1 = PDDocument.load(new File(SRCDIR, filename1), (String)null);
         int src1PageCount = srcDoc1.getNumberOfPages();
         PDFRenderer src1PdfRenderer = new PDFRenderer(srcDoc1);
         BufferedImage[] src1ImageTab = new BufferedImage[src1PageCount];
@@ -86,7 +127,7 @@ public class PDFMergerUtilityTest extends TestCase
         }
         srcDoc1.close();
 
-        PDDocument srcDoc2 = PDDocument.load(new File(SRCDIR, filename2), null);
+        PDDocument srcDoc2 = PDDocument.load(new File(SRCDIR, filename2), (String)null);
         int src2PageCount = srcDoc2.getNumberOfPages();
         PDFRenderer src2PdfRenderer = new PDFRenderer(srcDoc2);
         BufferedImage[] src2ImageTab = new BufferedImage[src2PageCount];
@@ -100,10 +141,10 @@ public class PDFMergerUtilityTest extends TestCase
         pdfMergerUtility.addSource(new File(SRCDIR, filename1));
         pdfMergerUtility.addSource(new File(SRCDIR, filename2));
         pdfMergerUtility.setDestinationFileName(TARGETTESTDIR + mergeFilename);
-        pdfMergerUtility.mergeDocuments(useScratchFiles);
+        pdfMergerUtility.mergeDocuments(memUsageSetting);
 
         PDDocument mergedDoc
-                = PDDocument.load(new File(TARGETTESTDIR, mergeFilename), null);
+                = PDDocument.load(new File(TARGETTESTDIR, mergeFilename), (String)null);
         PDFRenderer mergePdfRenderer = new PDFRenderer(mergedDoc);
         int mergePageCount = mergedDoc.getNumberOfPages();
         assertEquals(src1PageCount + src2PageCount, mergePageCount);

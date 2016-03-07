@@ -18,14 +18,14 @@ package org.apache.pdfbox.tools;
 
 import java.io.File;
 import java.io.IOException;
-
+import java.io.OutputStream;
 import java.util.Iterator;
-
 import org.apache.pdfbox.cos.COSBase;
+import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.cos.COSObject;
 import org.apache.pdfbox.cos.COSStream;
-
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.common.PDStream;
 
 /**
  * load document and write with all streams decoded.
@@ -67,10 +67,12 @@ public class WriteDecodedDoc
                 COSBase base = i.next().getObject();
                 if (base instanceof COSStream)
                 {
-                    // just kill the filters
-                    COSStream cosStream = (COSStream)base;
-                    cosStream.getUnfilteredStream();
-                    cosStream.setFilters(null);
+                    COSStream stream = (COSStream)base;
+                    byte[] bytes = new PDStream(stream).toByteArray();
+                    stream.removeItem(COSName.FILTER);
+                    OutputStream streamOut = stream.createOutputStream();
+                    streamOut.write(bytes);
+                    streamOut.close();
                 }
             }
             doc.getDocumentCatalog();
@@ -159,11 +161,13 @@ public class WriteDecodedDoc
      */
     private static void usage()
     {
-        System.err.println(
-                "usage: java -jar pdfbox-app-x.y.z.jar WriteDecodedDoc [OPTIONS] <input-file> [output-file]\n" +
-                "  -password <password>      Password to decrypt the document\n" +
-                "  <input-file>              The PDF document to be decompressed\n" +
-                "  [output-file]             The filename for the decompressed pdf\n"
-                );
+        String message = "Usage: java -jar pdfbox-app-x.y.z.jar WriteDecodedDoc [options] <inputfile> [outputfile]\n"
+                + "\nOptions:\n"
+                + "  -password <password> : Password to decrypt the document\n"
+                + "  <inputfile>          : The PDF document to be decompressed\n"
+                + "  [outputfile]         : The filename for the decompressed pdf\n";
+       
+        System.err.println(message);
+        System.exit(1);
     }
 }

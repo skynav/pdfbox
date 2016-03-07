@@ -27,7 +27,7 @@ import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.common.COSObjectable;
 import org.apache.pdfbox.pdmodel.common.function.PDFunction;
 import org.apache.pdfbox.pdmodel.graphics.PDXObject;
-import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
+import org.apache.pdfbox.pdmodel.graphics.form.PDTransparencyGroup;
 
 /**
  * Soft mask.
@@ -70,7 +70,7 @@ public final class PDSoftMask implements COSObjectable
 
     private final COSDictionary dictionary;
     private COSName subType = null;
-    private PDFormXObject group = null;
+    private PDTransparencyGroup group = null;
     private COSArray backdropColor = null;
     private PDFunction transferFunction = null;
 
@@ -107,15 +107,14 @@ public final class PDSoftMask implements COSObjectable
      * @return form containing the transparency group
      * @throws IOException
      */
-    public PDFormXObject getGroup() throws IOException
+    public PDTransparencyGroup getGroup() throws IOException
     {
         if (group == null)
         {
             COSBase cosGroup = getCOSObject().getDictionaryObject(COSName.G);
             if (cosGroup != null)
             {
-                group = (PDFormXObject) PDXObject
-                        .createXObject(cosGroup, COSName.G.getName(), null);
+                group = (PDTransparencyGroup) PDXObject.createXObject(cosGroup, null);
             }
         }
         return group;
@@ -135,6 +134,7 @@ public final class PDSoftMask implements COSObjectable
 
     /**
      * Returns the transfer function.
+     * @throws IOException If we are unable to create the PDFunction object.
      */
     public PDFunction getTransferFunction() throws IOException
     {

@@ -78,15 +78,19 @@ import org.apache.pdfbox.contentstream.operator.state.SetMatrix;
 import org.apache.pdfbox.contentstream.operator.color.SetNonStrokingDeviceCMYKColor;
 import org.apache.pdfbox.contentstream.operator.color.SetNonStrokingColor;
 import org.apache.pdfbox.contentstream.operator.color.SetNonStrokingColorSpace;
+import org.apache.pdfbox.contentstream.operator.color.SetNonStrokingDeviceGrayColor;
 import org.apache.pdfbox.contentstream.operator.color.SetNonStrokingDeviceRGBColor;
 import org.apache.pdfbox.contentstream.operator.color.SetStrokingDeviceCMYKColor;
 import org.apache.pdfbox.contentstream.operator.color.SetStrokingColor;
 import org.apache.pdfbox.contentstream.operator.color.SetStrokingColorSpace;
+import org.apache.pdfbox.contentstream.operator.color.SetStrokingDeviceGrayColor;
 import org.apache.pdfbox.contentstream.operator.color.SetStrokingDeviceRGBColor;
+import org.apache.pdfbox.contentstream.operator.state.SetGraphicsStateParameters;
 import org.apache.pdfbox.contentstream.operator.text.SetTextLeading;
 import org.apache.pdfbox.contentstream.operator.text.SetTextRenderingMode;
 import org.apache.pdfbox.contentstream.operator.text.SetTextRise;
 import org.apache.pdfbox.contentstream.operator.text.SetWordSpacing;
+import org.apache.pdfbox.cos.COSArray;
 
 /**
  * This class inherits from org.apache.pdfbox.util.PDFStreamEngine to allow the validation of specific rules in
@@ -101,14 +105,13 @@ public abstract class PreflightStreamEngine extends PDFStreamEngine
 
     protected PreflightContext context = null;
     protected COSDocument cosDocument = null;
-    protected PDPage processeedPage = null;
+    protected PDPage processedPage = null;
 
-    public PreflightStreamEngine(PreflightContext _context, PDPage _page)
+    public PreflightStreamEngine(PreflightContext context, PDPage page)
     {
-        super();
-        this.context = _context;
-        this.cosDocument = _context.getDocument().getDocument();
-        this.processeedPage = _page;
+        this.context = context;
+        this.cosDocument = context.getDocument().getDocument();
+        this.processedPage = page;
 
         // Graphics operators
         addOperator(new SetLineWidth());
@@ -127,6 +130,9 @@ public abstract class PreflightStreamEngine extends PDFStreamEngine
         addOperator(new SetNonStrokingDeviceRGBColor());
         addOperator(new SetStrokingDeviceRGBColor());
 
+        addOperator(new SetNonStrokingDeviceGrayColor());
+        addOperator(new SetStrokingDeviceGrayColor());
+
         addOperator(new SetStrokingColor());
         addOperator(new SetStrokingColorN());
         addOperator(new SetNonStrokingColor());
@@ -139,6 +145,7 @@ public abstract class PreflightStreamEngine extends PDFStreamEngine
         // Text operators
         addOperator(new BeginText());
         addOperator(new EndText());
+        addOperator(new SetGraphicsStateParameters());
         addOperator(new SetFontAndSize());
         addOperator(new SetTextRenderingMode());
         addOperator(new SetMatrix());
@@ -193,13 +200,9 @@ public abstract class PreflightStreamEngine extends PDFStreamEngine
         addOperator(new StubOperator("F"));
         addOperator(new StubOperator("f*"));
 
-        addOperator(new StubOperator("g"));
-        addOperator(new StubOperator("G"));
-
         addOperator(new StubOperator("M"));
         addOperator(new StubOperator("MP"));
 
-        addOperator(new StubOperator("gs"));
         addOperator(new StubOperator("i"));
 
         addOperator(new StubOperator("ri"));
@@ -265,7 +268,7 @@ public abstract class PreflightStreamEngine extends PDFStreamEngine
      * @param operator the InlinedImage object (BI to EI)
      * @throws ContentStreamException
      */
-    protected void validateImageFilter(Operator operator) throws ContentStreamException
+    protected void validateInlineImageFilter(Operator operator) throws ContentStreamException
     {
         COSDictionary dict = operator.getImageParameters();
         /*
@@ -281,13 +284,13 @@ public abstract class PreflightStreamEngine extends PDFStreamEngine
      * the color space defined in OutputIntent dictionaries.
      * 
      * @param operator the InlinedImage object (BI to EI)
-     * @throws ContentStreamException
+     * @throws IOException
      */
-    protected void validateImageColorSpace(Operator operator) throws IOException
+    protected void validateInlineImageColorSpace(Operator operator) throws IOException
     {
         COSDictionary dict = operator.getImageParameters();
 
-        COSBase csInlinedBase = dict.getItem(COSName.CS);
+        COSBase csInlinedBase = dict.getDictionaryObject(COSName.CS, COSName.COLORSPACE);
         ColorSpaceHelper csHelper = null;
         if (csInlinedBase != null)
         {
@@ -310,31 +313,66 @@ public abstract class PreflightStreamEngine extends PDFStreamEngine
                     if (pdCS != null)
                     {
                         cs = ColorSpaces.valueOf(pdCS.getName());
-                        PreflightConfiguration cfg = context.getConfig();
-                        ColorSpaceHelperFactory csFact = cfg.getColorSpaceHelperFact();
-                        csHelper = csFact.getColorSpaceHelper(context, pdCS, ColorSpaceRestriction.ONLY_DEVICE);
+                        csHelper = getColorSpaceHelper(pdCS);
                     }
                 }
 
                 if (cs == null)
                 {
-                    registerError("The ColorSpace is unknown", ERROR_GRAPHIC_UNEXPECTED_VALUE_FOR_KEY);
+                    registerError("The ColorSpace " + colorSpace + " is unknown", ERROR_GRAPHIC_UNEXPECTED_VALUE_FOR_KEY);
                     return;
                 }
             }
 
             if (csHelper == null)
             {
+                // convert to long names first
+                csInlinedBase = toLongName(csInlinedBase);
+                if (csInlinedBase instanceof COSArray && ((COSArray) csInlinedBase).size() > 1)
+                {
+                    COSArray srcArray = (COSArray) csInlinedBase;
+                    COSBase csType = srcArray.get(0);
+                    if (COSName.I.equals(csType) || COSName.INDEXED.equals(csType))
+                    {
+                        COSArray dstArray = new COSArray();
+                        dstArray.addAll(srcArray);
+                        dstArray.set(0, COSName.INDEXED);
+                        dstArray.set(1, toLongName(srcArray.get(1)));
+                        csInlinedBase = dstArray;
+                    }
+                }                
                 PDColorSpace pdCS = PDColorSpace.create(csInlinedBase);
-                PreflightConfiguration cfg = context.getConfig();
-                ColorSpaceHelperFactory csFact = cfg.getColorSpaceHelperFact();
-                csHelper = csFact.getColorSpaceHelper(context, pdCS, ColorSpaceRestriction.ONLY_DEVICE);
+                csHelper = getColorSpaceHelper(pdCS);
             }
-
             csHelper.validate();
         }
     }
 
+    private ColorSpaceHelper getColorSpaceHelper(PDColorSpace pdCS)
+    {
+        PreflightConfiguration cfg = context.getConfig();
+        ColorSpaceHelperFactory csFact = cfg.getColorSpaceHelperFact();
+        return csFact.getColorSpaceHelper(context, pdCS, ColorSpaceRestriction.ONLY_DEVICE);
+    }
+    
+    // deliver the long name of a device colorspace, or the parameter
+    private COSBase toLongName(COSBase cs)
+    {
+        if (COSName.RGB.equals(cs))
+        {
+            return COSName.DEVICERGB;
+        }
+        if (COSName.CMYK.equals(cs))
+        {
+            return COSName.DEVICECMYK;
+        }
+        if (COSName.G.equals(cs))
+        {
+            return COSName.DEVICEGRAY;
+        }
+        return cs;
+    }
+    
     /**
      * This method validates if the ColorOperator can be used with the color space
      * defined in OutputIntent dictionaries.
@@ -502,7 +540,9 @@ public abstract class PreflightStreamEngine extends PDFStreamEngine
         }
         else
         {
-            registerError("The operand doesn't have the expected type", ERROR_GRAPHIC_UNEXPECTED_VALUE_FOR_KEY);
+            registerError("The operand " + arguments.get(0) + " for colorSpace operator " + 
+                    operator.getName() + " doesn't have the expected type", 
+                    ERROR_GRAPHIC_UNEXPECTED_VALUE_FOR_KEY);
             return;
         }
 
@@ -529,7 +569,7 @@ public abstract class PreflightStreamEngine extends PDFStreamEngine
 
         if (cs == null)
         {
-            registerError("The ColorSpace is unknown", ERROR_GRAPHIC_UNEXPECTED_VALUE_FOR_KEY);
+            registerError("The ColorSpace " + colorSpaceName + " is unknown", ERROR_GRAPHIC_UNEXPECTED_VALUE_FOR_KEY);
             return;
         }
 

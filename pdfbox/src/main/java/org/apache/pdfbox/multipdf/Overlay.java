@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
@@ -37,7 +36,6 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.pdmodel.common.PDStream;
 import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
 
 /**
@@ -70,8 +68,6 @@ public class Overlay
     private String inputFileName = null;
     private PDDocument inputPDFDocument = null;
 
-    private String outputFilename = null;
-    
     private String defaultOverlayFilename = null;
     private PDDocument defaultOverlay = null;
 
@@ -98,9 +94,12 @@ public class Overlay
      * This will add overlays to a documents.
      * 
      * @param specificPageOverlayFile map of overlay files for specific pages
+     * 
+     * @return the resulting pdf, which has to be saved and closed be the caller
+     *  
      * @throws IOException if something went wrong
      */
-    public void overlay(Map<Integer, String> specificPageOverlayFile)
+    public PDDocument overlay(Map<Integer, String> specificPageOverlayFile)
             throws IOException
     {
         try
@@ -114,14 +113,10 @@ public class Overlay
             }
             processPages(inputPDFDocument);
 
-            inputPDFDocument.save(outputFilename);
+            return inputPDFDocument;
         }
         finally
         {
-            if (inputPDFDocument != null)
-            {
-                inputPDFDocument.close();
-            }
             if (defaultOverlay != null)
             {
                 defaultOverlay.close();
@@ -279,10 +274,10 @@ public class Overlay
         List<COSStream> contentStreams = createContentStreamList(contents);
         // concatenate streams
         COSStream concatStream = new COSStream();
-        OutputStream out = concatStream.createUnfilteredStream();
+        OutputStream out = concatStream.createOutputStream(COSName.FLATE_DECODE);
         for (COSStream contentStream : contentStreams)
         {
-            InputStream in = contentStream.getUnfilteredStream();
+            InputStream in = contentStream.createInputStream();
             byte[] buf = new byte[2048];
             int n;
             while ((n = in.read(buf)) > 0)
@@ -292,7 +287,6 @@ public class Overlay
             out.flush();
         }
         out.close();
-        concatStream.setFilters(COSName.FLATE_DECODE);
         return concatStream;
     }
 
@@ -418,7 +412,7 @@ public class Overlay
 
     private COSName createOverlayXObject(PDPage page, LayoutPage layoutPage, COSStream contentStream)
     {
-        PDFormXObject xobjForm = new PDFormXObject(new PDStream(contentStream));
+        PDFormXObject xobjForm = new PDFormXObject(contentStream);
         xobjForm.setResources(new PDResources(layoutPage.overlayResources));
         xobjForm.setFormType(1);
         xobjForm.setBBox( layoutPage.overlayMediaBox.createRetranslatedRectangle());
@@ -461,15 +455,13 @@ public class Overlay
         }
         return stringValue;
     }
-
     
     private COSStream createStream(String content) throws IOException
     {
         COSStream stream = new COSStream();
-        OutputStream out = stream.createUnfilteredStream();
+        OutputStream out = stream.createOutputStream(COSName.FLATE_DECODE);
         out.write(content.getBytes("ISO-8859-1"));
         out.close();
-        stream.setFilters(COSName.FLATE_DECODE);
         return stream;
     }
 
@@ -511,26 +503,6 @@ public class Overlay
     public String getInputFile()
     {
         return inputFileName;
-    }
-
-    /**
-     * Sets the output file.
-     * 
-     * @param outputFile the output file
-     */
-    public void setOutputFile(String outputFile)
-    {
-        outputFilename = outputFile;
-    }
-
-    /**
-     * Returns the output file.
-     * 
-     * @return the output file
-     */
-    public String getOutputFile()
-    {
-        return outputFilename;
     }
 
     /**

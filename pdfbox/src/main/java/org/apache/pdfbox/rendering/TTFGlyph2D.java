@@ -116,12 +116,8 @@ final class TTFGlyph2D implements Glyph2D
      */
     public GeneralPath getPathForGID(int gid, int code) throws IOException
     {
-        GeneralPath glyphPath;
-        if (glyphs.containsKey(gid))
-        {
-            glyphPath = glyphs.get(gid);
-        }
-        else
+        GeneralPath glyphPath = glyphs.get(gid);
+        if (glyphPath == null)
         {
             if (gid == 0 || gid >= ttf.getMaximumProfile().getNumGlyphs())
             {
@@ -163,7 +159,8 @@ final class TTFGlyph2D implements Glyph2D
                 glyphs.put(gid, glyphPath);
             }
         }
-        return glyphPath != null ? (GeneralPath) glyphPath.clone() : null; // todo: expensive
+        // todo: expensive
+        return (GeneralPath) glyphPath.clone();
     }
 
     @Override

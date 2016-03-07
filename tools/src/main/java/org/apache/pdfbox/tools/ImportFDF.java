@@ -52,8 +52,15 @@ public class ImportFDF
     {
         PDDocumentCatalog docCatalog = pdfDocument.getDocumentCatalog();
         PDAcroForm acroForm = docCatalog.getAcroForm();
+        if (acroForm == null)
+        {
+            return;
+        }
         acroForm.setCacheFields( true );
         acroForm.importFDF( fdfDocument );
+        
+        //TODO this can be removed when we create appearance streams
+        acroForm.setNeedAppearances(true);
     }
 
     /**
@@ -63,9 +70,9 @@ public class ImportFDF
      *
      * @param args command line arguments
      *
-     * @throws Exception If there is an error importing the FDF document.
+     * @throws IOException If there is an error importing the FDF document.
      */
-    public static void main(String[] args) throws Exception
+    public static void main(String[] args) throws IOException
     {
         // suppress the Dock icon on OS X
         System.setProperty("apple.awt.UIElement", "true");
@@ -74,7 +81,7 @@ public class ImportFDF
         importer.importFDF( args );
     }
 
-    private void importFDF( String[] args ) throws Exception
+    private void importFDF( String[] args ) throws IOException
     {
         PDDocument pdf = null;
         FDFDocument fdf = null;
@@ -109,6 +116,7 @@ public class ImportFDF
     private static void usage()
     {
         System.err.println( "usage: org.apache.pdfbox.tools.ImportFDF <pdf-file> <fdf-file> <output-file>" );
+        System.exit(1);
     }
 
     /**

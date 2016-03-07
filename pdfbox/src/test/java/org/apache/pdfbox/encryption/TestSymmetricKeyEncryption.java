@@ -25,12 +25,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import javax.crypto.Cipher;
 import junit.framework.TestCase;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.io.IOUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentCatalog;
@@ -239,17 +239,15 @@ public class TestSymmetricKeyEncryption extends TestCase
         String prefix = "Simple-";
         int numSrcPages = document.getNumberOfPages();
         PDFRenderer pdfRenderer = new PDFRenderer(document);
-        ArrayList<BufferedImage> srcImgTab = new ArrayList<BufferedImage>();
-        ArrayList<ByteArrayOutputStream> srcContentStreamTab = new ArrayList<ByteArrayOutputStream>();
+        List<BufferedImage> srcImgTab = new ArrayList<BufferedImage>();
+        List<byte[]> srcContentStreamTab = new ArrayList<byte[]>();
         for (int i = 0; i < numSrcPages; ++i)
         {
             srcImgTab.add(pdfRenderer.renderImage(i));
-            COSStream contentStream = document.getPage(i).getContentStream();
-            InputStream unfilteredStream = contentStream.getUnfilteredStream();
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            IOUtils.copy(unfilteredStream, baos);
+            InputStream unfilteredStream = document.getPage(i).getContents();
+            byte[] bytes = IOUtils.toByteArray(unfilteredStream);
             unfilteredStream.close();
-            srcContentStreamTab.add(baos);
+            srcContentStreamTab.add(bytes);
         }
 
         PDDocument encryptedDoc = encrypt(keyLength, sizePriorToEncr, document,
@@ -264,14 +262,12 @@ public class TestSymmetricKeyEncryption extends TestCase
             ValidateXImage.checkIdent(bim, srcImgTab.get(i));
 
             // compare content streams
-            COSStream contentStreamDecr = encryptedDoc.getPage(i).getContentStream();
-            InputStream unfilteredStream = contentStreamDecr.getUnfilteredStream();
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            IOUtils.copy(unfilteredStream, baos);
+            InputStream unfilteredStream = encryptedDoc.getPage(i).getContents();
+            byte[] bytes = IOUtils.toByteArray(unfilteredStream);
             unfilteredStream.close();
             Assert.assertArrayEquals("content stream of page " + i + " not identical",
-                    srcContentStreamTab.get(i).toByteArray(),
-                    baos.toByteArray());
+                    srcContentStreamTab.get(i),
+                    bytes);
         }
 
         File pdfFile = new File(testResultsDir, prefix + keyLength + "-bit-decrypted.pdf");
@@ -290,6 +286,10 @@ public class TestSymmetricKeyEncryption extends TestCase
         StandardProtectionPolicy spp = new StandardProtectionPolicy(ownerpassword, userpassword, ap);
         spp.setEncryptionKeyLength(keyLength);
         spp.setPermissions(permission);
+        
+        // This must have no effect and should only log a warning.
+        doc.setAllSecurityToBeRemoved(true);
+        
         doc.protect(spp);
 
         File pdfFile = new File(testResultsDir, prefix + keyLength + "-bit-encrypted.pdf");

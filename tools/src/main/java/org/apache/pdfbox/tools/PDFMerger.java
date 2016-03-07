@@ -16,6 +16,9 @@
  */
 package org.apache.pdfbox.tools;
 
+import java.io.IOException;
+
+import org.apache.pdfbox.io.MemoryUsageSetting;
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
 
 /**
@@ -24,7 +27,7 @@ import org.apache.pdfbox.multipdf.PDFMergerUtility;
  *
  * @author Ben Litchfield
  */
-public class PDFMerger
+public final class PDFMerger
 {
     
     private PDFMerger()
@@ -35,9 +38,9 @@ public class PDFMerger
      *
      * @param args Command line arguments, should be at least 3.
      *
-     * @throws Exception If there is an error parsing the document.
+     * @throws IOException If there is an error parsing the document.
      */
-    public static void main( String[] args ) throws Exception
+    public static void main( String[] args ) throws IOException
     {
         // suppress the Dock icon on OS X
         System.setProperty("apple.awt.UIElement", "true");
@@ -46,7 +49,7 @@ public class PDFMerger
         merge.merge( args );
     }
 
-    private void merge( String[] args ) throws Exception
+    private void merge( String[] args ) throws IOException
     {
         int firstFileArgPos = 0;
 
@@ -64,7 +67,7 @@ public class PDFMerger
 
         String destinationFileName = args[args.length-1];
         merger.setDestinationFileName(destinationFileName);
-        merger.mergeDocuments(false);
+        merger.mergeDocuments(MemoryUsageSetting.setupMainMemoryOnly());
     }
 
     /**
@@ -72,11 +75,13 @@ public class PDFMerger
      */
     private static void usage()
     {
-        System.err.println( "Usage: java -jar pdfbox-app-x.y.z.jar PDFMerger "
-                + "<Source PDF File 2..n> <Destination PDF File>\n" +
-            "  <Source PDF File 2..n>       2 or more source PDF documents to merge\n" +
-            "  <Destination PDF File>       The PDF document to save the merged documents to\n"
-            );
-        System.exit( 1 );
+        String message = "Usage: java -jar pdfbox-app-x.y.z.jar PDFMerger "
+                + "<inputfiles 2..n> <outputfile>\n"
+                + "\nOptions:\n"
+                + "  <inputfiles 2..n> : 2 or more source PDF documents to merge\n"
+                + "  <outputfile>      : The PDF document to save the merged documents to\n";
+        
+        System.err.println(message);
+        System.exit(1);
     }
 }

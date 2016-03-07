@@ -52,11 +52,11 @@ public class PDFTemplateStructure
     private PDSignatureField signatureField;
     private PDSignature pdSignature;
     private COSDictionary acroFormDictionary;
-    private PDRectangle singatureRectangle;
+    private PDRectangle signatureRectangle;
     private AffineTransform affineTransform;
     private COSArray procSet;
     private PDImageXObject image;
-    private PDRectangle formaterRectangle;
+    private PDRectangle formatterRectangle;
     private PDStream holderFormStream;
     private PDResources holderFormResources;
     private PDFormXObject holderForm;
@@ -193,18 +193,18 @@ public class PDFTemplateStructure
      * Gets SignatureRectangle
      * @return the rectangle for the signature
      */
-    public PDRectangle getSingatureRectangle()
+    public PDRectangle getSignatureRectangle()
     {
-        return singatureRectangle;
+        return signatureRectangle;
     }
 
     /**
      * Sets SignatureRectangle
-     * @param singatureRectangle
+     * @param signatureRectangle
      */
-    public void setSignatureRectangle(PDRectangle singatureRectangle)
+    public void setSignatureRectangle(PDRectangle signatureRectangle)
     {
-        this.singatureRectangle = singatureRectangle;
+        this.signatureRectangle = signatureRectangle;
     }
 
     /**
@@ -265,18 +265,18 @@ public class PDFTemplateStructure
      * Gets formatter rectangle
      * @return the formatter rectangle
      */
-    public PDRectangle getFormaterRectangle()
+    public PDRectangle getFormatterRectangle()
     {
-        return formaterRectangle;
+        return formatterRectangle;
     }
 
     /**
      * Sets formatter rectangle
-     * @param formaterRectangle
+     * @param formatterRectangle
      */
-    public void setFormaterRectangle(PDRectangle formaterRectangle)
+    public void setFormatterRectangle(PDRectangle formatterRectangle)
     {
-        this.formaterRectangle = formaterRectangle;
+        this.formatterRectangle = formatterRectangle;
     }
 
     /**
@@ -360,7 +360,7 @@ public class PDFTemplateStructure
      * Gets Inner form Stream.
      * @return the inner form stream
      */
-    public PDStream getInnterFormStream()
+    public PDStream getInnerFormStream()
     {
         return innterFormStream;
     }

@@ -22,6 +22,7 @@ import org.apache.pdfbox.pdmodel.PDDocumentInformation;
 import org.apache.pdfbox.pdmodel.common.PDMetadata;
 
 import java.io.File;
+import java.io.IOException;
 import java.text.DateFormat;
 import java.util.Calendar;
 import java.util.Iterator;
@@ -37,10 +38,8 @@ import org.apache.xmpbox.xml.XmpParsingException;
 /**
  * This is an example on how to extract metadata from a PDF document.
  * 
- * Usage: java org.apache.pdfbox.examples.pdmodel.ExtractDocument &lt;input-pdf&gt;
- *
  */
-public class ExtractMetadata
+public final class ExtractMetadata
 {
     private ExtractMetadata()
     {
@@ -52,9 +51,10 @@ public class ExtractMetadata
      *
      * @param args The command line arguments.
      *
-     * @throws Exception If there is an error parsing the document.
+     * @throws IOException If there is an error parsing the document.
+     * @throws XmpParsingException
      */
-    public static void main(String[] args) throws Exception
+    public static void main(String[] args) throws IOException, XmpParsingException
     {
         if (args.length != 1)
         {
