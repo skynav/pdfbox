@@ -245,7 +245,9 @@ public class CFFCIDFont extends CFFFont
     public List<Number> getFontMatrix()
     {
         // our parser guarantees that FontMatrix will be present and correct in the Top DICT
-        return (List<Number>)topDict.get("FontMatrix");
+        @SuppressWarnings("unchecked")
+        List<Number> matrix = (List<Number>)topDict.get("FontMatrix");
+        return matrix;
     }
 
     @Override

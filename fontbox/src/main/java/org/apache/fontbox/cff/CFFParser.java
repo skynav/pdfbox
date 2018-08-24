@@ -497,6 +497,7 @@ public class CFFParser
                 List<Map<String, Object>> fontDicts = ((CFFCIDFont) font).getFontDicts();
                 if (fontDicts.size() > 0 && fontDicts.get(0).containsKey("FontMatrix"))
                 {
+                    @SuppressWarnings("unchecked")
                     List<Number> matrix = (List<Number>)fontDicts.get(0).get("FontMatrix");
                     font.addValueToTopDict("FontMatrix", matrix);
                 }

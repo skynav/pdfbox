@@ -368,7 +368,9 @@ public class CMapParser
             byte[] tokenBytes;
             if (nextToken instanceof List<?>)
             {
-                array = (List<byte[]>) nextToken;
+                @SuppressWarnings("unchecked")
+                List<byte[]> tokenArray = (List<byte[]>) nextToken;
+                array = tokenArray;
                 tokenBytes = array.get(0);
             }
             else

@@ -77,7 +77,9 @@ public class CFFType1Font extends CFFFont implements EncodedFont
     @Override
     public List<Number> getFontMatrix()
     {
-        return (List<Number>)topDict.get("FontMatrix");
+        @SuppressWarnings("unchecked")
+        List<Number> matrix = (List<Number>)topDict.get("FontMatrix");
+        return matrix;
     }
 
     /**

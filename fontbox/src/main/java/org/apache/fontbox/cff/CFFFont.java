@@ -97,6 +97,7 @@ public abstract class CFFFont implements FontBoxFont
     @Override
     public BoundingBox getFontBBox()
     {
+        @SuppressWarnings("unchecked")
         List<Number> numbers = (List<Number>)topDict.get("FontBBox");
         return new BoundingBox(numbers);
     }
